@@ -88,13 +88,19 @@ COPY /etc/hosts    /tmp		    #错误！不能使用构建上下文之外的文�
 
 ​	14、	USER 	指定运行容器时的用户名或 UID，后续的RUN等指令也会使用指定的用户身份
 
-	USER <user>[:<group>] 
-			或
-	USER <UID>[:<GID>]
-
-​		其中用户名或`ID`是指可以在容器基础镜像中找到的用户。 如果在容器基础镜像中没有创建特定用户，则在`USER`指令之前添加`useradd`命令以添加特定用户。例如，在`Dockerfile`中创建用户：
-
+```dockerfile
+USER <user>[:<group>] 
+		或
+USER <UID>[:<GID>]
 ```
+
+​	重点
+
+- 使用 USER 指定用户时，可以使用用户名、UID 或 GID，或是两者的组合
+- 使用 USER 指定用户后，Dockerfile 中后续的命令 RUN、CMD、ENTRYPOINT 都将使用该用户
+- 其中用户名或`ID`是指可以在容器基础镜像中找到的用户。 如果在容器基础镜像中没有创建特定用户，则在`USER`指令之前添加`useradd`命令以添加特定用户。例如，在`Dockerfile`中创建用户：
+
+```dockerfile
 RUN useradd -d /home/username -m -s /bin/bash username USER username
 ```
 
@@ -103,7 +109,7 @@ RUN useradd -d /home/username -m -s /bin/bash username USER username
 ​		**注意:** 如果镜像中有容器不需要的用户，请考虑删除它们。
  		删除这些用户后，提交镜像，然后生成新的容器实例以供使用。
 
-​		**Docker容器中推荐以Non root身份启动，这样更安全。**
+​		**Docker容器中推荐以Non root身份启动，这样更安全。当容器中运行的服务不需要管理员权限时，可以先建立一个特定的用户和用户组，为它分配必要的权限，使用 USER 切换到这个用户**
 
 ​	15、MAINTAINER author:设置镜像的作者,可以使任意字符串
 
