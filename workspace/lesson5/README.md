@@ -16,4 +16,4 @@
 
 ​	`sysctl net.ipv4.ip_dorward=1`  将内核转发参数设为1
 
-​	**<u>netstat -lntup 查看端口监听状况</u>**
+​	**`netstat -lntup` 查看端口监听状况**

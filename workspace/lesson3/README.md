@@ -18,9 +18,9 @@
 
    不带其他参数的话下载的就是最新版本的
 
-   要下载其他版本的话就先去dockerHub上搜索，再点进去查看有哪些版本。
+   要下载其他版本的话就先去DockerHub上搜索，再点进去查看有哪些版本。
 
-   下载其他版本： docker pull xxx:3.6
+   下载其他版本： `docker pull xxx:3.6`
 
    也可以从私有仓库中下载
 
@@ -30,7 +30,7 @@
 
 4. 导出镜像
 
-   `docker image save xxx -o docker_xxx.tar.gz`      文件名可以随便取     -o参数表示输出为  可以直接docker save
+   `docker image save xxx -o docker_xxx.tar.gz`      文件名可以随便取     -o参数表示输出为  可以直接`docker save`
 
    还有一个export的版本，不过save版本会保存镜像的版本，而export不会。
 
@@ -44,13 +44,13 @@
 
 6. 导入镜像
 
-   `docker image  load -i docker_xxx.tar.gz`    可以直接docker load
+   `docker image  load -i docker_xxx.tar.gz`    可以直接 `docker load`
 
    还有一个import的版本    最好使用load版本。
 
 7. 构建镜像
 
-   ```
+   ```shell
    docker build  -t centos6.9_ssh:v2   /opt/dockerfile/centos6.9_ssh/ 
    ```
 
@@ -88,7 +88,7 @@
 
 15. docker push [OPTIONS] NAME[:TAG]:把一个镜像或者仓库推送至registry上
 
-### 
+
 
 
 

@@ -9,36 +9,54 @@
    --name  指定容器的名字，名字跟在--name后面
 
    -it:以交互模式进入容器,并打开终端
+
    -d:使容器在后台运行,并打印容器ID
+
    **--rm 告诉Docker不保存容器，只要运行完毕就自动清楚，身躯我们手动管理容器的麻烦**
+
    -h 指定容器的hostname
+
    --link container_id:tag:定义连接其他容器的hostname为tag,一般用于多容器间方便通信
+
    --network string（docker的network名字） 或者 container:ID（如container:4ddf）   可以让你启动一个容器并“加入”到另一个容器的 Network 
 
-   ------
+   --net=host，就意味着这个容器不会为进程启用 Network Namespace。这就意味着，这个容器拆除了 Network Namespace 的“隔离墙”，所以，它会和宿主机上的其他普通进程一样，直接共享宿主机的网络栈。这就为容器直接操作和使用宿主机网络提供了一个渠道。
 
-   Namespace 里
-       而如果我指定–net=host，就意味着这个容器不会为进程启用 Network Namespace。这就意味着，这个容器拆除了 Network Namespace 的“隔离墙”，所以，它会和宿主机上的其他普通进程一样，直接共享宿主机的网络栈。这就为容器直接操作和使用宿主机网络提供了一个渠道。
-       --ip string:指定分配一个ip(默认随机)
-       -p, --publish list:将一个容器的端口映射至host.例如80:80
-       -v, --volume list:绑定挂载一个volume.格式为[host path:]container path[:OPTIONS].如果没有host path,docker会自动创建;OPTIONS可选ro只读
-       -m bytes:限制容器的内存使用量.如果不指定
-       --memory-swap则默认使用相同容量的交换内存
-       --memory-swap bytes:限制容器的内存和交换内存总共的使用量(-1指不限制)
-       -c int:设置CPU shares(是一个相对的权重值,默认1024)
-       --cpus decimal:设置可使用CPU的数量
-       --blkio-weight uint16:设置容器block IO的权重,数值在10至1000之间,0为不允许(默认是0)
-       --device-read-bps list:限制从一个设备读取的速率(字节每秒),默认为[].例如:/dev/sda:30MB
-       --device-read-iops list:限制从一个设备读取的次数(次数每秒)
-       --device-write-bps list:限制从一个设备写入的速率
-       --device-write-iops list:限制从一个设备写入的次数
-       --restart string:当一个容器退出时,重启的策略(默认是no)
-         string
+   --ip string:指定分配一个ip(默认随机)
 
-           - no:不自动重启
-                   - on-failure[:max-retries]:容器进程退出代码非0则重启容器.可选一个最大重启次数的限制
-                   - always:始终重启容器
-                           - unless-stopped:始终重启容器,除非该容器被手动关闭
+   -p, --publish list:将一个容器的端口映射至host.例如80:80
+
+   -v, --volume list:绑定挂载一个volume.格式为[host path:]container path[:OPTIONS].如果没有host path,docker会自动创建;OPTIONS可选ro只读
+
+   -m bytes:限制容器的内存使用量.如果不指定
+
+   --memory-swap则默认使用相同容量的交换内存
+
+   --memory-swap bytes:限制容器的内存和交换内存总共的使用量(-1指不限制)
+
+   -c int:设置CPU shares(是一个相对的权重值,默认1024)
+
+   --cpus decimal:设置可使用CPU的数量
+
+   --blkio-weight uint16:设置容器block IO的权重,数值在10至1000之间,0为不允许(默认是0)
+
+   --device-read-bps list:限制从一个设备读取的速率(字节每秒),默认为[].例如:/dev/sda:30MB
+
+   --device-read-iops list:限制从一个设备读取的次数(次数每秒)
+
+   --device-write-bps list:限制从一个设备写入的速率
+
+   --device-write-iops list:限制从一个设备写入的次数
+
+   --restart string:当一个容器退出时,重启的策略(默认是no)
+
+   --no:不自动重启
+
+   --on-failure[:max-retries]:容器进程退出代码非0则重启容器.可选一个最大重启次数的限制
+
+   --always:始终重启容器
+
+   --unless-stopped:始终重启容器,除非该容器被手动关闭
 
    
 

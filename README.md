@@ -8,7 +8,7 @@
 
 * [lesson1: Docker安装以及服务相关命令](./workspace/lesson1)
 
-* [lesson2: 启动第一个容器](./workspace/lesson2)
+* [lesson2: 基于Docker部署Go项目](./workspace/lesson2)
 
 * [lesson3: Docker的镜像管理](./workspace/lesson3)
 
