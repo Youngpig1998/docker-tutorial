@@ -82,7 +82,14 @@ bin dev etc home lib lib64 mnt opt proc root run sbin sys tmp usr var
 
 ​	另外，需要明确的是，rootfs 只是一个操作系统所包含的文件、配置和目录，并不包括操作系统内核。在 Linux 操作系统中，这两部分是分开存放的，操作系统只有在开机启动时才会加载指定版本的内核镜像。所以说，rootfs 只包括了操作系统的“躯壳”，并没有包括操作系统的“灵魂”。
 
-​	所以说，rootfs 只包括了操作系统的“躯壳”，并没有包括操作系统的“灵魂”。那么，对于容器来说，这个操作系统的“灵魂”又在哪里呢？**实际上，同一台机器上的所有容器，都共享宿主机操作系统的内核。**这就意味着，如果你的应用程序需要配置内核参数、加载额外的内核模块，以及跟内核进行直接的交互，你就需要注意了：这些操作和依赖的对象，都是宿主机操作系统的内核，它对于该机器上的所有容器来说是一个“全局变量”，牵一发而动全身。**这也是容器相比于虚拟机的主要缺陷之一：毕竟后者不仅有模拟出来的硬件机器充当沙盒，而且每个沙盒里还运行着一个完整的 Guest OS 给应用随便折腾。**
+​	那么，对于容器来说，这个操作系统的“灵魂”又在哪里呢？**实际上，同一台机器上的所有容器，都共享宿主机操作系统的内核。**这就意味着，如果你的应用程序需要配置内核参数、加载额外的内核模块，以及跟内核进行直接的交互，你就需要注意了：这些操作和依赖的对象，都是宿主机操作系统的内核，它对于该机器上的所有容器来说是一个“全局变量”，牵一发而动全身。**这也是容器相比于虚拟机的主要缺陷之一：毕竟后者不仅有模拟出来的硬件机器充当沙盒，而且每个沙盒里还运行着一个完整的 Guest OS 给应用随便折腾。**
+
+​	典型的Linux文件系统由bootfs和rootfs两部分组成：
+
+- bootfs(boot file system)主要包含 bootloader和kernel，bootloader主要是引导加载kernel，当kernel被加载到内存中后 bootfs就被umount了，也就是卸载了
+  - 传统的Linux加载bootfs时会先将rootfs设为read-only，然后在系统自检之后将rootfs从read-only改为read-write，然后我们就可以在rootfs上进行写和读的操作了。
+  - Docker的镜像不是这样，它在bootfs自检完毕之后并不会把rootfs的read-only改为read-write。而是利用union mount（UnionFS的一种挂载机制）将一个或多个read-only的rootfs加载到之前的read-only的rootfs层之上。在加载了这么多层的rootfs之后，仍然让它看起来只像是一个文件系统，在Docker的体系里把union mount的这些read-only的rootfs叫做Docker的镜像。但是，此时的每一层rootfs都是read-only的，我们此时还不能对其进行操作。当我们创建一个容器，也就是将Docker镜像进行实例化，系统会在一层或是多层read-only的rootfs之上分配一层空的read-write的rootfs
+- rootfs (root file system) 包含的就是典型 Linux 系统中的/dev，/proc，/bin，/etc等标准目录和文件，对于一个精简的OS，rootfs可以很小，只需要包括最基本的命令、工具和程序库就可以了，因为底层直接用Host的kernel，自己只需要提供 rootfs 就行了。由此可见对于不同的linux发行版, bootfs是一致的, rootfs会有差别, 因此不同的发行版可以公用bootfs
 
 ------
 
@@ -194,23 +201,33 @@ bin boot dev etc home lib lib64 media mnt opt proc root run sbin srv sys tmp usr
 
 ## 思考题
 
-1、既然容器的 rootfs（比如，Ubuntu 镜像），是以只读方式挂载的，那么又如何在容器里修改 Ubuntu 镜像的内容呢？（提示：Copy-on-Write）
+1. 既然容器的 rootfs（比如，Ubuntu 镜像），是以只读方式挂载的，那么又如何在容器里修改 Ubuntu 镜像的内容呢？（提示：Copy-on-Write）
 
-2、除了 AuFS，你知道 Docker 项目还支持哪些 UnionFS 实现吗？你能说出不同宿主机环境下推荐使用哪种实现吗？
+   Answer：
 
-3、有读者反映，咱们重新挂载/tmp目录的实验执行完成后，在宿主机上居然可以看到这个挂载信息。。这是怎么回事呢？实际上，大家自己装的虚拟机，或者云上的虚拟机的根目录，很多都是以share方式的挂载的。这时候，你在容器里做mount也会继承share方式。这样就会把容器内挂载传播到宿主机上。解决这个问题，你可以在重新挂载/tmp之前，在容器内先执行一句：mount(“”, “/“, NULL, MS_PRIVATE, “”) 这样，容器内的根目录就是private挂载的了。
+   ​	上面的读写层通常也称为容器层，下面的只读层称为镜像层，所有的增删查改操作都只会作用在容器层，相同的文件上层会覆盖掉下层。知道这一点，就不难理解镜像文件的修改，比如修改一个文件的时候，首先会从上到下查找有没有这个文件，找到，就复制到容器层中，修改，修改的结果就会作用到下层的文件，这种方式也被称为copy-on-write。它表示只在需要写时才去复制，这个是针对已有文件的修改场景。比如基于一个image启动多个Container，如果为每个Container都去分配一个image一样的文件系统，那么将会占用大量的磁盘空间。而CoW技术可以让所有的容器共享image的文件系统，所有数据都从image中读取，只有当要对文件进行写操作时，才从image里把要写的文件复制到自己的文件系统进行修改。所以无论有多少个容器共享同一个image，所做的写操作都是对从image中复制到自己的文件系统中的复本上进行，并不会修改image的源文件，且多个容器操作同一个文件，会在每个容器的文件系统里生成一个复本，每个容器修改的都是自己的复本，相互隔离，相互不影响。使用CoW可以有效的提高磁盘的利用率。
 
-​	加了这句也不行，或者我使用 mount --make-private / 命令，先修改根目录的挂载类型，然后用命令 findmnt -o TARGET,PROPAGATION / 查看根目录已经修改成private类型了，再运行ns命令还是不行，依然在另一个跑在宿主机的终端上看到了/tmp的挂载，新的挂载还是传播到宿主机上了 
+2. 除了 AuFS，你知道 Docker 项目还支持哪些 UnionFS 实现吗？你能说出不同宿主机环境下推荐使用哪种实现吗？
 
-​	解决方法： 突然意识到我的linux系统中/tmp的挂载是独立于根目录的，于是我执行了一个命令 findmnt -o TARGET,PROPAGATION /tmp 发现挂载类型是shared，我晕~我这边的情况应该是改/tmp的挂载点类型为private，而不是根目录的，所以我执行 mount --make-private /tmp 然后查看挂在类型 findmnt -o TARGET,PROPAGATION /tmp，变为private，之后再运行ns，可以了~（做这步前我已经把根目录的挂载类型改回shared了） 
+   Answer:
 
-​	总结： 应该先查看下自己宿主机的挂载信息cat /proc/mount ，再来判断应该是改哪个挂载点的挂在类型，我的 Linux 发行版是 Centos 7
+   ​	查了一下，包括但不限于以下这几种：aufs, device mapper, btrfs, overlayfs, vfs, zfs。aufs是ubuntu 常用的，device mapper 是 centos，btrfs 是 SUSE，overlayfs ubuntu 和 centos 都会使用，现在最新的 docker 版本中默认两个系统都是使用的 overlayfs，vfs 和 zfs 常用在 solaris 系统。
 
-Answer for 1：
+3. 有读者反映，咱们重新挂载/tmp目录的实验执行完成后，在宿主机上居然可以看到这个挂载信息。。这是怎么回事呢？实际上，大家自己装的虚拟机，或者云上的虚拟机的根目录，很多都是以share方式的挂载的。这时候，你在容器里做mount也会继承share方式。这样就会把容器内挂载传播到宿主机上。解决这个问题，你可以在重新挂载/tmp之前，在容器内先执行一句：mount(“”, “/“, NULL, MS_PRIVATE, “”) 这样，容器内的根目录就是private挂载的了。
 
-​	上面的读写层通常也称为容器层，下面的只读层称为镜像层，所有的增删查改操作都只会作用在容器层，相同的文件上层会覆盖掉下层。知道这一点，就不难理解镜像文件的修改，比如修改一个文件的时候，首先会从上到下查找有没有这个文件，找到，就复制到容器层中，修改，修改的结果就会作用到下层的文件，这种方式也被称为copy-on-write。 
+   ​    加了这句也不行，或者我使用 mount --make-private / 命令，先修改根目录的挂载类型，然后用命令 findmnt -o TARGET,PROPAGATION / 查看根目录已经修改成private类型了，再运行ns命令还是不行，依然在另一个跑在宿主机的终端上看到了/tmp的挂载，新的挂载还是传播到宿主机上了 
 
-Answer for 2:
+   ​    解决方法： 突然意识到我的linux系统中/tmp的挂载是独立于根目录的，于是我执行了一个命令 findmnt -o TARGET,PROPAGATION /tmp 发现挂载类型是shared，我晕~我这边的情况应该是改/tmp的挂载点类型为private，而不是根目录的，所以我执行 mount --make-private /tmp 然后查看挂在类型 findmnt -o TARGET,PROPAGATION /tmp，变为private，之后再运行ns，可以了~（做这步前我已经把根目录的挂载类型改回shared了） 
 
-​	查了一下，包括但不限于以下这几种：aufs, device mapper, btrfs, overlayfs, vfs, zfs。aufs是ubuntu 常用的，device mapper 是 centos，btrfs 是 SUSE，overlayfs ubuntu 和 centos 都会使用，现在最新的 docker 版本中默认两个系统都是使用的 overlayfs，vfs 和 zfs 常用在 solaris 系统。
+   ​    总结： 应该先查看下自己宿主机的挂载信息cat /proc/mount ，再来判断应该是改哪个挂载点的挂在类型，我的 Linux 发行版是 Centos 7
+
+4. Docker中一个centos镜像为什么只有200M，而一个centos操作系统的iso文件要几个G？
+
+   Answer：
+
+   ​	Docker镜像是分层构建的，每一层可以复用，Linux 系统底层（bootfs）基本一致，所以linux系列系统中安装docker镜像会复用宿主机Linux底层的内核，只有rootfs和其他镜像层需要下载，所以比较小。
+
+
+
+
 

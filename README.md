@@ -1,6 +1,6 @@
 # Learning notes for Docker
 
-​	此项目为Docker语言学习中的知识总结、项目源码等，未完待续。
+​	此项目为Docker学习中的知识总结、项目源码等，未完待续。
 
 ## 基础篇
 
