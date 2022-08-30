@@ -22,6 +22,8 @@
 
 * [lesson8: 容器Network](./workspace/lesson8)
 
+* [lesson9: Dockerfile中的 multi-stage(多阶段构建)](./workspace/lesson9)
+
   
 
   
@@ -38,7 +40,10 @@
 
 ## Quiz
 
-
+- [在Docker容器中捕获信号](./workspace/senior/p6)
+- [理解Docker中的uid和gid](./workspace/senior/p7)
+- [隔离docker容器中的用户](./workspace/senior/p8)
+- [Dockerfile中的CMD和ENTRYPOINT](./workspace/senior/p9)
 
 
 
@@ -63,11 +68,11 @@
 ## Blog
 
 * [Martin Fowler](https://martinfowler.com/): Chief Scientist of Thoughtworks
+* [Sparkdev](https://www.cnblogs.com/sparkdev/category/927855.html?page=2)
 
 
 
 ## Video
-
 
 
 
