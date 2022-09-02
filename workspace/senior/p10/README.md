@@ -151,7 +151,7 @@ $ iptables -t raw -A OUTPUT -p icmp -j TRACE
 $ iptables -t raw -A PREROUTING -p icmp -j TRACE
 ```
 
-​	通过上述设置，你就可以在 /var/log/syslog 里看到数据包传输的日志了。这一部分内容，你可以在课后结合iptables 的相关知识进行实践，从而验证我和你分享的数据包传递流程。
+​	通过上述设置，你就可以在 /var/log/syslog 里看到数据包传输的日志了。这一部分内容，你可以在课后结合iptables 的相关知识进行实践，或者查看该[视频](https://www.bilibili.com/video/BV1nL411j7Ln?spm_id_from=333.999.0.0&vd_source=f4423986cf76dd8d17c7490655b0ea80)从而验证我和你分享的数据包传递流程。
 
 ​	熟悉了 docker0 网桥的工作方式，你就可以理解，在默认情况下，被限制在 Network Namespace 里的容器进程，实际上是通过 Veth Pair 设备 + 宿主机网桥的方式，实现了跟同其他容器的数据交换。
 
