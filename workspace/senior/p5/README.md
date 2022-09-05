@@ -25,7 +25,7 @@
 
 ​	Kubernetes 项目最主要的设计思想是，从更宏观的角度，以统一的方式来定义任务之间的各种关系，并且为将来支持更多种类的关系留有余地。
 
-![5](C:\Users\Young\Desktop\云计算\Kubernates\GeekTime\深入剖析Kubernetes\容器技术概念入门\k8s各个资源关系图.webp)	
+![5](../../img/k8s-resources.jpg)	
 
 ​	在 Kubernetes 项目中，我们所推崇的使用方法是：
 
