@@ -1,4 +1,4 @@
-# Docker入门教程101: 基于Docker部署Go项目
+# 基于Docker部署Go项目
 
 ## 环境准备
 

@@ -31,11 +31,11 @@
 
 ​	以上各个网络地址解释如下：
 
-1. lo为本机环回地址，也就是我自己的windows主机
+1. lo为本机环回地址，也就是我自己的windows主机。
 2. ens33是虚拟机TML-2的地址，也就是Docker的宿主机的网络地址192.168.5.102。
-3. virbr0 是VMWare默认创建的一个 Bridge，其作用是为连接其上的虚机网卡提供 NAT 访问外网的功能。 virbr0 默认分配了一个IP 192.168.122.1，并为连接其上的其他虚拟网卡提供 DHCP 服务
-4. virbr0-nic 代表虚拟网桥NIC。 它基本上是物理网卡和虚拟机的虚拟网卡之间的桥梁
-5. docker0即是docker使用的网络地址
+3. virbr0 是一种虚拟网络接口，这是由于安装和启用了 libvirt 服务后生成的，libvirt 在服务器（host）上生成一个 virtual network switch (virbr0)，host 上所有的虚拟机（guests）通过这个 virbr0 连起来。默认情况下 virbr0 使用的是 NAT 模式（采用 IP Masquerade），所以这种情况下 guest 通过 host 才能访问外部。centos virbr0是KVM默认创建的一个Bridge，其作用是为连接其上的虚机网卡提供NAT访问外网的功能；virbr0默认分配一个IP“192.168.122.1”，并为其他虚拟网卡提供DHCP服务。
+4. virbr0-nic 代表虚拟网桥NIC。 它基本上是物理网卡和虚拟机的虚拟网卡之间的桥梁。
+5. docker0即是docker使用的网络地址。
 
 ​	属实是三层套娃了。使用以下命令查看所有的Docker网络模式：
 
