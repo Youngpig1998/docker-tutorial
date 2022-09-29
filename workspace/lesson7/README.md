@@ -53,7 +53,9 @@ RUN cd /tmp  && chmod +x setup.sh   \
 
 ​	4、	ADD    与COPY类似.不过如果src是归档文件,则会被自动解压到dest，不会自动解压zip  ;如果src是URL地址,则会下载内容至dest中
 
-​	5、	COPY   不会自动解压任何压缩包**
+​	需要注意的是，`ADD` 指令会令镜像构建缓存失效，从而可能会令镜像构建变得比较缓慢。因此在 `COPY` 和 `ADD` 指令中选择的时候，可以遵循这样的原则，所有的文件复制均使用 `COPY` 指令，仅在需要自动解压缩的场合使用 `ADD`。
+
+​	5、	COPY   **不会自动解压任何压缩包**
 
 ​		**拷贝的文件必须是“构建上下文”路径里的，不能随意指定文件。也就是说，如果要从本机向镜像拷贝文件，就必须把这些文件专门放到一个专门的目录，然后在 docker build里制定“构建上下文”到这个目录才行。**
 
@@ -62,11 +64,57 @@ COPY ./a.txt  /tmp/a.txt 		#把构建上下文里的a.txt拷贝到镜像的/tmp�
 COPY /etc/hosts    /tmp		    #错误！不能使用构建上下文之外的文件
 ```
 
+​	`COPY` 指令将从构建上下文目录中 `<源路径>` 的文件/目录复制到新的一层的镜像内的 `<目标路径>` 位置。比如：
+
+```dockerfile
+COPY package.json /usr/src/app/
+```
+
+​	`<源路径>` 可以是多个，甚至可以是通配符，其通配符规则要满足 Go 的 [`filepath.Match`](https://golang.org/pkg/path/filepath/#Match) 规则，如：
+
+```dockerfile
+COPY hom* /mydir/
+COPY hom?.txt /mydir/
+```
+
+​	`<目标路径>` 可以是容器内的绝对路径，也可以是相对于工作目录的相对路径（工作目录可以用 `WORKDIR` 指令来指定）。目标路径不需要事先创建，如果目录不存在会在复制文件前先行创建缺失目录。
+
+​	此外，还需要注意一点，使用 `COPY` 指令，源文件的各种元数据都会保留。比如读、写、执行权限、文件变更时间等。这个特性对于镜像定制很有用。特别是构建相关文件都在使用 Git 进行管理的时候。
+
+​	在使用该指令的时候还可以加上 `--chown=<user>:<group>` 选项来改变文件的所属用户及所属组。
+
+```dockerfile
+COPY --chown=55:mygroup files* /mydir/
+COPY --chown=bin files* /mydir/
+COPY --chown=1 files* /mydir/
+COPY --chown=10:11 files* /mydir/
+```
+
+​	**如果源路径为文件夹，复制的时候不是直接复制该文件夹，而是将文件夹中的内容复制到目标路径。**
+
 ​	6、	WORKDIR   用于指定容器的一个目录， 容器启动时执行的命令会在该目录下执行。为后面的RUN,CMD,ENTRYPOINT,ADD或COPY指令设置镜像中的当前工作目录
+
+​		如果你的 `WORKDIR` 指令使用的相对路径，那么所切换的路径与之前的 `WORKDIR` 有关：
+
+```dockerfile
+WORKDIR /a
+WORKDIR b
+WORKDIR c
+
+RUN pwd
+```
+
+​		`RUN pwd` 的工作目录为 `/a/b/c`。
 
 ​	7、	VOLUME   设置卷，将指定目录中的文件保存到宿主机的卷中。每启动一个新的容器都会开一个新的卷，名字随机。
 
 ​	8、	EXPOSE  用来指定容器中的进程会监听某个端口
+
+​		格式为 `EXPOSE <端口1> [<端口2>...]`。
+
+​		`EXPOSE` 指令是声明容器运行时提供服务的端口，这只是一个声明，在容器运行时并不会因为这个声明应用就会开启这个端口的服务。在 Dockerfile 中写入这样的声明有两个好处，一个是帮助镜像使用者理解这个镜像服务的守护端口，以方便配置映射；另一个用处则是在运行时使用随机端口映射时，也就是 `docker run -P` 时，会自动随机映射 `EXPOSE` 的端口。
+
+​		要将 `EXPOSE` 和在运行时使用 `-p <宿主端口>:<容器端口>` 区分开来。`-p`，是映射宿主端口和容器端口，换句话说，就是将容器的对应端口服务公开给外界访问，而 `EXPOSE` 仅仅是声明容器打算使用什么端口而已，并不会自动在宿主进行端口映射。
 
 ​	**9、	CMD      在容器启动时运行指定的命令(多个CMD指令只有最后一个生效,如果docker run之后有参数则会被替换)**
 
@@ -85,6 +133,48 @@ COPY /etc/hosts    /tmp		    #错误！不能使用构建上下文之外的文�
 ​			--retries 脚本失败次数，3次失败，即30秒之后，标记容器为unhealthy
 
 ​	13、	ARG   创建变量，不过该变量只能在镜像构建过程中可见，即Dockerfile中，容器运行时不可见。
+
+​		灵活的使用 `ARG` 指令，能够在不修改 Dockerfile 的情况下，构建出不同的镜像。
+
+​		ARG 指令有生效范围，如果在 `FROM` 指令之前指定，那么只能用于 `FROM` 指令中。
+
+```dockerfile
+ARG DOCKER_USERNAME=library
+
+FROM ${DOCKER_USERNAME}/alpine
+RUN set -x ; echo ${DOCKER_USERNAME}
+```
+
+​	使用上述 Dockerfile 会发现无法输出 `${DOCKER_USERNAME}` 变量的值，要想正常输出，你必须在 `FROM` 之后再次指定 `ARG`
+
+```dockerfile
+# 只在 FROM 中生效
+
+ARG DOCKER_USERNAME=library
+
+
+FROM ${DOCKER_USERNAME}/alpine
+
+# 要想在 FROM 之后使用，必须再次指定
+ARG DOCKER_USERNAME=library
+
+RUN set -x ; echo ${DOCKER_USERNAME}
+```
+
+​	对于多阶段构建，尤其要注意这个问题
+
+```dockerfile
+# 这个变量在每个 FROM 中都生效
+ARG DOCKER_USERNAME=library
+
+FROM ${DOCKER_USERNAME}/alpine
+
+RUN set -x ; echo 1
+
+FROM ${DOCKER_USERNAME}/alpine
+
+RUN set -x ; echo 2
+```
 
 ​	14、	USER 	指定运行容器时的用户名或 UID，后续的RUN等指令也会使用指定的用户身份
 

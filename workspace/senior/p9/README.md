@@ -116,6 +116,36 @@ CMD [ "top" ]
 
 ​	从上图可以看到，命令行上指定的 ps aux 命令覆盖了 Dockerfile 中的 CMD [ "top" ]。实际上，命令行上的命令同样会覆盖 shell 模式的 CMD 指令。
 
+​	在指令格式上，一般推荐使用 `exec` 格式，这类格式在解析时会被解析为 JSON 数组，因此一定要使用双引号 `"`，而不要使用单引号。
+
+​	如果使用 `shell` 格式的话，实际的命令会被包装为 `sh -c` 的参数的形式进行执行。比如：
+
+```dockerfile
+CMD echo $HOME
+```
+
+​	在实际执行中，会将其变更为：
+
+```dockerfile
+CMD [ "sh", "-c", "echo $HOME" ]
+```
+
+​	这就是为什么我们可以使用环境变量的原因，因为这些环境变量会被 shell 进行解析处理。
+
+​	提到 `CMD` 就不得不提容器中应用在前台执行和后台执行的问题。这是初学者常出现的一个混淆。Docker 不是虚拟机，容器中的应用都应该以前台执行，而不是像虚拟机、物理机里面那样，用 `systemd` 去启动后台服务，容器内没有后台服务的概念。一些初学者将 `CMD` 写为：
+
+```dockerfile
+CMD service nginx start
+```
+
+​	然后发现容器执行后就立即退出了。甚至在容器内去使用 `systemctl` 命令结果却发现根本执行不了。这就是因为没有搞明白前台、后台的概念，没有区分容器和虚拟机的差异，依旧在以传统虚拟机的角度去理解容器。对于容器而言，其启动程序就是容器应用进程，容器就是为了主进程而存在的，主进程退出，容器就失去了存在的意义，从而退出，其它辅助进程不是它需要关心的东西。
+
+​	而使用 `service nginx start` 命令，则是希望 upstart 来以后台守护进程形式启动 `nginx` 服务。而刚才说了 `CMD service nginx start` 会被理解为 `CMD [ "sh", "-c", "service nginx start"]`，因此主进程实际上是 `sh`。那么当 `service nginx start` 命令结束后，`sh` 也就结束了，`sh` 作为主进程退出了，自然就会令容器退出。正确的做法是直接执行 `nginx` 可执行文件，并且要求以前台形式运行。比如：
+
+```dockerfile
+CMD ["nginx", "-g", "daemon off;"]
+```
+
 ## ENTRYPOINT 指令
 
 ​	ENTRYPOINT 指令的目的也是为容器指定默认执行的任务。
@@ -191,6 +221,48 @@ $ docker run --rm --entrypoint hostname test2
 ![img](https://images2018.cnblogs.com/blog/952033/201802/952033-20180223131500161-1384881659.png)
 
 ​	这里我们使用 hostname 命令覆盖了默认的 echo $HOME 命令。
+
+### 场景：应用运行前的准备工作
+
+​	启动容器就是启动主进程，但有些时候，启动主进程前，需要一些准备工作。比如 `mysql` 类的数据库，可能需要一些数据库配置、初始化的工作，这些工作要在最终的 mysql 服务器运行之前解决。此外，可能希望避免使用 `root` 用户去启动服务，从而提高安全性，而在启动服务前还需要以 `root` 身份执行一些必要的准备工作，最后切换到服务用户身份启动服务。或者除了服务外，其它命令依旧可以使用 `root` 身份执行，方便调试等。
+
+​	这些准备工作是和容器 `CMD` 无关的，无论 `CMD` 为什么，都需要事先进行一个预处理的工作。这种情况下，可以写一个脚本，然后放入 `ENTRYPOINT` 中去执行，而这个脚本会将接到的参数（也就是 `<CMD>`）作为命令，在脚本最后执行。比如官方镜像 `redis` 中就是这么做的：
+
+```dockerfile
+FROM alpine:3.4
+...
+RUN addgroup -S redis && adduser -S -G redis redis
+...
+ENTRYPOINT ["docker-entrypoint.sh"]
+EXPOSE 6379
+CMD [ "redis-server" ]
+```
+
+​	可以看到其中为了 redis 服务创建了 redis 用户，并在最后指定了 `ENTRYPOINT` 为 `docker-entrypoint.sh` 脚本。
+
+```shell
+#!/bin/sh
+
+...
+
+\# allow the container to be started with `--user`
+
+if [ "$1" = 'redis-server' -a "$(id -u)" = '0' ]; then
+	find . \! -user redis -exec chown redis '{}' +
+	exec gosu redis "$0" "$@"
+fi
+
+exec "$@"
+```
+
+​	该脚本的内容就是根据 `CMD` 的内容来判断，如果是 `redis-server` 的话，则切换到 `redis` 用户身份启动服务器，否则依旧使用 `root` 身份执行。比如：
+
+```shell
+$ docker run -it redis id
+uid=0(root) gid=0(root) groups=0(root)
+```
+
+
 
 ## Dockerfile 中至少要有一个
 

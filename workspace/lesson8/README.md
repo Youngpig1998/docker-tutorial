@@ -291,3 +291,108 @@ PING busybox1 (172.19.0.2): 56 data bytes
 ```
 
 ​	这样，`busybox1` 容器和 `busybox2` 容器建立了互联关系。
+
+
+
+
+
+# 配置 DNS
+
+​	如何自定义配置容器的主机名和 DNS 呢？秘诀就是 Docker 利用虚拟文件来挂载容器的 3 个相关配置文件。
+
+​	在容器中使用 `mount` 命令可以看到挂载信息：
+
+```shell
+$ mount
+
+/dev/disk/by-uuid/1fec...ebdf on /etc/hostname type ext4 ...
+/dev/disk/by-uuid/1fec...ebdf on /etc/hosts type ext4 ...
+tmpfs on /etc/resolv.conf type tmpfs ...
+```
+
+​	这种机制可以让宿主主机 DNS 信息发生更新后，所有 Docker 容器的 DNS 配置通过 `/etc/resolv.conf` 文件立刻得到更新。配置全部容器的 DNS ，也可以在 `/etc/docker/daemon.json` 文件中增加以下内容来设置。
+
+```json
+{
+  "dns" : [
+    "114.114.114.114",
+    "8.8.8.8"
+  ]
+}
+```
+
+​	这样每次启动的容器 DNS 自动配置为 `114.114.114.114` 和 `8.8.8.8`。使用以下命令来证明其已经生效。
+
+```shell
+$ docker run -it --rm ubuntu:18.04  cat etc/resolv.conf
+
+nameserver 114.114.114.114
+nameserver 8.8.8.8
+```
+
+​	如果用户想要手动指定容器的配置，可以在使用 `docker run` 命令启动容器时加入如下参数：
+
+​	`-h HOSTNAME` 或者 `--hostname=HOSTNAME` 设定容器的主机名，它会被写到容器内的 `/etc/hostname` 和 `/etc/hosts`。但它在容器外部看不到，既不会在 `docker container ls` 中显示，也不会在其他的容器的 `/etc/hosts` 看到。
+
+​	`--dns=IP_ADDRESS` 添加 DNS 服务器到容器的 `/etc/resolv.conf` 中，让容器用这个服务器来解析所有不在 `/etc/hosts` 中的主机名。
+
+​	`--dns-search=DOMAIN` 设定容器的搜索域，当设定搜索域为 `.example.com` 时，在搜索一个名为 host 的主机时，DNS 不仅搜索 host，还会搜索 `host.example.com`。
+
+> 注意：如果在容器启动时没有指定最后两个参数，Docker 会默认用主机上的 `/etc/resolv.conf` 来配置容器。
+
+
+
+# 实例：创建一个点到点连接
+
+​	默认情况下，Docker 会将所有容器连接到由 `docker0` 提供的虚拟子网中。
+
+​	用户有时候需要两个容器之间可以直连通信，而不用通过主机网桥进行桥接。解决办法很简单：创建一对 `peer` 接口，分别放到两个容器中，配置成点到点链路类型即可。
+
+​	首先启动 2 个容器：
+
+```shell
+$ docker run -i -t --rm --net=none base /bin/bash
+
+root@1f1f4c1f931a:/#
+
+$ docker run -i -t --rm --net=none base /bin/bash
+
+root@12e343489d2f:/#
+```
+
+​	找到进程号，然后创建网络命名空间的跟踪文件。
+
+```shell
+$ docker inspect -f '{{.State.Pid}}' 1f1f4c1f931a
+2989
+
+$ docker inspect -f '{{.State.Pid}}' 12e343489d2f
+3004
+
+$ sudo mkdir -p /var/run/netns
+$ sudo ln -s /proc/2989/ns/net /var/run/netns/2989
+$ sudo ln -s /proc/3004/ns/net /var/run/netns/3004
+```
+
+​	创建一对 `peer` 接口，然后配置路由
+
+```shell
+$ sudo ip link add A type veth peer name B
+
+
+$ sudo ip link set A netns 2989
+$ sudo ip netns exec 2989 ip addr add 10.1.1.1/32 dev A
+$ sudo ip netns exec 2989 ip link set A up
+$ sudo ip netns exec 2989 ip route add 10.1.1.2/32 dev A
+
+
+
+$ sudo ip link set B netns 3004
+$ sudo ip netns exec 3004 ip addr add 10.1.1.2/32 dev B
+$ sudo ip netns exec 3004 ip link set B up
+$ sudo ip netns exec 3004 ip route add 10.1.1.1/32 dev B
+```
+
+​	现在这 2 个容器就可以相互 ping 通，并成功建立连接。点到点链路不需要子网和子网掩码。
+
+​	此外，也可以不指定 `--net=none` 来创建点到点链路。这样容器还可以通过原先的网络来通信。利用类似的办法，可以创建一个只跟主机通信的容器。但是一般情况下，更推荐使用 `--icc=false` 来关闭容器之间的通信。
