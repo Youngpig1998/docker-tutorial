@@ -24,6 +24,8 @@
 
 * [lesson9: Dockerfile中的 multi-stage(多阶段构建)](./workspace/lesson9)
 
+* [lesson10：构建多种系统架构支持的 Docker 镜像](./workspace/lesson10)
+
   
 
   
@@ -60,6 +62,20 @@
 
 
 ### Docker Compose
+
+- [安装及简单应用](./workspace/senior/p11)
+
+
+
+### Docker Swarm
+
+- [安装及简单应用](./workspace/senior/p12)
+
+
+
+### DevOps
+
+- [基于Docker的DevOps简单实战](./workspace/senior/p13)
 
 
 
