@@ -191,7 +191,8 @@ USER <UID>[:<GID>]
 - 其中用户名或`ID`是指可以在容器基础镜像中找到的用户。 如果在容器基础镜像中没有创建特定用户，则在`USER`指令之前添加`useradd`命令以添加特定用户。例如，在`Dockerfile`中创建用户：
 
 ```dockerfile
-RUN useradd -d /home/username -m -s /bin/bash username USER username
+RUN useradd -d /home/username -m -s /bin/bash username 
+USER username
 ```
 
 ​		如果使用docker run指令时设置了-u uname参数,则将覆盖USER指令设置的用户
