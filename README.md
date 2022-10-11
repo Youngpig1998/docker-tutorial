@@ -40,6 +40,7 @@
 - [浅谈容器网络](./workspace/senior/p10)
 - 容器进程
   - [为什么我在容器中不能kill 1号进程？](./workspace/senior/p14)
+  - [为什么我的容器里有这么多僵尸进程？](./workspace/senior/p15)
 
 
 
