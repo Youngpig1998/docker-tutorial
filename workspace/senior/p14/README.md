@@ -229,9 +229,11 @@ static bool sig_task_ignored(struct task_struct *t, int sig, bool force)
 
 ```
 
-​	接下来，我们就逐一分析一下这三个子条件，我们来说说这个"!(force && sig_kernel_only(sig))" 。第一个条件里 force 的值，对于同一个 Namespace 里发出的信号来说，调用值是 0，所以这个条件总是满足的。我们再来看一下第二个条件 “handler == SIG_DFL”，
+​	接下来，我们就逐一分析一下这三个子条件，我们来说说这个"!(force && sig_kernel_only(sig))" 。第一个条件里 force 的值，对于同一个 Namespace 里发出的信号来说，调用值是 0，所以这个条件总是满足的。
 
-​	第二个条件判断信号的 handler 是否是 SIG_DFL。那么什么是 SIG_DFL 呢？对于每个信号，用户进程如果不注册一个自己的 handler，就会有一个系统缺省的 handler，这个缺省的 handler 就叫作 SIG_DFL。对于 SIGKILL，我们前面介绍过它是特权信号，是不允许被捕获的，所以它的 handler 就一直是 SIG_DFL。这第二个条件对 SIGKILL 来说总是满足的。对于 SIGTERM，它是可以被捕获的。也就是说如果用户不注册 handler，那么这个条件对 SIGTERM 也是满足的。
+我们再来看一下第二个条件 “handler == SIG_DFL”，第二个条件判断信号的 handler 是否是 SIG_DFL。那么什么是 SIG_DFL 呢？对于每个信号，用户进程如果不注册一个自己的 handler，就会有一个系统缺省的 handler，这个缺省的 handler 就叫作 SIG_DFL。对于 SIGKILL，我们前面介绍过它是特权信号，是不允许被捕获的，所以它的 handler 就一直是 SIG_DFL。这第二个条件对 SIGKILL 来说总是满足的。对于 SIGTERM，它是可以被捕获的。也就是说如果用户不注册 handler，那么这个条件对 SIGTERM 也是满足的。
+
+> 貌似sig_kernel_only函数是用来判断信号是不是kill或者stop的，是这两个信号才会返回true，这就意味着force不为0，同时信号是kill或者stop的时候信号是不会被忽略的，这也就解释了为什么宿主机是可以通过kill信号来杀掉容器里的进程，而sigterm由于force的值可能会被忽略。force 由发送信号的进程和接受信号进程是否在同一个namespace里决定。
 
 ​	最后再来看一下第三个条件，"t->signal->flags & SIGNAL_UNKILLABLE"，这里的条件判断是这样的，进程必须是 SIGNAL_UNKILLABLE 的。这个 SIGNAL_UNKILLABLE flag 是在哪里置位的呢？可以参考我们下面的这段代码，在每个 Namespace 的 init 进程建立的时候，就会打上 SIGNAL_UNKILLABLE 这个标签，也就是说只要是 1 号进程，就会有这个 flag，这个条件也是满足的。
 
