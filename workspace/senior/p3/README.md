@@ -217,7 +217,7 @@ bin boot dev etc home lib lib64 media mnt opt proc root run sbin srv sys tmp usr
 
    ​    加了这句也不行，或者我使用 mount --make-private / 命令，先修改根目录的挂载类型，然后用命令 findmnt -o TARGET,PROPAGATION / 查看根目录已经修改成private类型了，再运行ns命令还是不行，依然在另一个跑在宿主机的终端上看到了/tmp的挂载，新的挂载还是传播到宿主机上了 
 
-   ​    解决方法： 突然意识到我的linux系统中/tmp的挂载是独立于根目录的，于是我执行了一个命令 findmnt -o TARGET,PROPAGATION /tmp 发现挂载类型是shared，我晕~我这边的情况应该是改/tmp的挂载点类型为private，而不是根目录的，所以我执行 mount --make-private /tmp 然后查看挂在类型 findmnt -o TARGET,PROPAGATION /tmp，变为private，之后再运行ns，可以了~（做这步前我已经把根目录的挂载类型改回shared了） 
+   ​    解决方法： 突然意识到我的linux系统中/tmp的挂载是独立于根目录的，于是我执行了一个命令 findmnt -o TARGET,PROPAGATION /tmp 发现挂载类型是shared，我晕。我这边的情况应该是改/tmp的挂载点类型为private，而不是根目录的，所以我执行 mount --make-private /tmp 然后查看挂在类型 findmnt -o TARGET,PROPAGATION /tmp，变为private，之后再运行ns，可以了。（做这步前我已经把根目录的挂载类型改回shared了） 
 
    ​    总结： 应该先查看下自己宿主机的挂载信息cat /proc/mount ，再来判断应该是改哪个挂载点的挂在类型，我的 Linux 发行版是 Centos 7
 

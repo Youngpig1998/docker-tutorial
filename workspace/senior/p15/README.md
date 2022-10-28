@@ -36,7 +36,7 @@ Tasks: 1003 total,   1 running,   2 sleeping,   0 stopped, 1000 zombie
 …
 ```
 
-​	那么问题来了，什么是僵尸进程？它们是怎么产生的？僵尸进程太多会导致什么问题？想要回答这些问题，我们就要从进程状态的源头学习，看看僵尸进程到底处于进程整个生命周期里的哪一环。
+​	那么问题来了，什么是僵尸进程？它们是怎么产生的？僵尸进程太多会导致什么问题？想要回答这些问题，我们就要从进程状态的源头学习，看看[僵尸进程](https://blog.csdn.net/a745233700/article/details/120715371)到底处于进程整个生命周期里的哪一环。
 
 ## 知识详解
 
@@ -157,40 +157,40 @@ bash: fork: retry: Resource temporarily unavailable
 
 int main(int argc, char *argv[])
 {
-       int i;
-       int total;
+    int i;
+    int total;
 
-       if (argc < 2) {
-              total = 1;
-       } else {
-              total = atoi(argv[1]);
-       }
+    if (argc < 2) {
+        total = 1;
+    } else {
+        total = atoi(argv[1]);
+    }
 
-       printf("To create %d processes\n", total);
+    printf("To create %d processes\n", total);
 
-       for (i = 0; i < total; i++) {
-              pid_t pid = fork();
- 
-              if (pid == 0) {
-                      printf("Child => PPID: %d PID: %d\n", getppid(),
-                             getpid());
-                      sleep(60);
-                      printf("Child process exits\n");
-                      exit(EXIT_SUCCESS);
-              } else if (pid > 0) {
-                      printf("Parent created child %d\n", i);
-              } else {
-                      printf("Unable to create child process. %d\n", i);
-                      break;
-              }
-       }
+    for (i = 0; i < total; i++) {
+        pid_t pid = fork();
 
-       printf("Paraent is sleeping\n");
-       while (1) {
-              sleep(100);
-       }
+        if (pid == 0) {
+            printf("Child => PPID: %d PID: %d\n", getppid(),
+                   getpid());
+            sleep(60);
+            printf("Child process exits\n");
+            exit(EXIT_SUCCESS);
+        } else if (pid > 0) {
+            printf("Parent created child %d\n", i);
+        } else {
+            printf("Unable to create child process. %d\n", i);
+            break;
+        }
+    }
 
-       return EXIT_SUCCESS;
+    printf("Paraent is sleeping\n");
+    while (1) {
+        sleep(100);
+    }
+
+    return EXIT_SUCCESS;
 }
 ```
 
@@ -214,21 +214,20 @@ for (i = 0; i < total; i++) {
 ```c
 
 int reap_zombies(const pid_t child_pid, int* const child_exitcode_ptr) {
-        pid_t current_pid;
-        int current_status;
+    pid_t current_pid;
+    int current_status;
 
-        while (1) {
-                current_pid = waitpid(-1, &current_status, WNOHANG);
+    while (1) {
+        current_pid = waitpid(-1, &current_status, WNOHANG);
 
-                switch (current_pid) {
-                        case -1:
-                                if (errno == ECHILD) {
-                                        PRINT_TRACE("No child to wait");
-                                        break;
-                                }
+        switch (current_pid) {
+            case -1:
+                if (errno == ECHILD) {
+                    PRINT_TRACE("No child to wait");
+                    break;
+                }
 
 …
-
 ```
 
 ## 重点总结
@@ -260,22 +259,22 @@ int reap_zombies(const pid_t child_pid, int* const child_exitcode_ptr) {
 
 - 如果容器的 init 进程创建了子进程 B，B 又创建了自己的子进程 C。如果 C 运行完之后，退出成了僵尸进程，B 进程还在运行，而容器的 init 进程还在不断地调用 waitpid()，那 C 这个僵尸进程可以被回收吗？
 
-  答：C 不会被回收，waitpid 仅等待直接 children 的状态变化。 为什么先进入僵尸状态而不是直接消失？觉得是留给父进程一次机会，查看子进程的 PID、终止状态（退出码、终止原因，比如是信号终止还是正常退出等）、资源使用信息。如果子进程直接消失，那么父进程没有机会掌握子进程的具体终止情况。一般情况下，程序逻辑可能会依据子进程的终止情况做出进一步处理：比如 Nginx Master 进程获知 Worker 进程异常退出，则重新拉起来一个 Worker 进程。
+  ​	答：C 不会被回收，waitpid 仅等待直接 children 的状态变化。 为什么先进入僵尸状态而不是直接消失？觉得是留给父进程一次机会，查看子进程的 PID、终止状态（退出码、终止原因，比如是信号终止还是正常退出等）、资源使用信息。如果子进程直接消失，那么父进程没有机会掌握子进程的具体终止情况。一般情况下，程序逻辑可能会依据子进程的终止情况做出进一步处理：比如 Nginx Master 进程获知 Worker 进程异常退出，则重新拉起来一个 Worker 进程。
 
   
 
 - 经常看到一些容器僵尸，状态栏显示：Exited (2) 10 days ago，Exited (1) 10 days ago，Exited (100) 10 days ago等等，这些容器为啥不能被回收呢？目前只能docker rm清理掉。
 
-  答：docker 自己没有自动清理的功能。如果是kubernetes/kubelet是会做清理。
+  ​	答：docker 自己没有自动清理的功能。如果是kubernetes/kubelet是会做清理。
 
 -  在Kubernetes 的情况下，是不是该节点上所有的容器都是kubelet 的子进程？不然kubelet 怎么来清理这些容器产生的僵尸进程呢？ 
 
-  答：在kuberenetes下，kubelet还是调用 containerd/runc去启动容器的，每个容器的父进程是containerd-shim, 最终shim可以回收僵尸进程。
+  ​	答：在kuberenetes下，kubelet还是调用 containerd/runc去启动容器的，每个容器的父进程是containerd-shim, 最终shim可以回收僵尸进程。
 
 - 在Docker 的场景下，容器第一个进程是用户自己写的进程，而该进程是不能保证在回收子进程资源上的质量的，所以才有Tinit 等工具，那为什么docker runtime 不默认把这样的回收功能做了呢？
 
-  答：docker倒是也做了这件事。 用docker启动容器的时候 加--init参数，起来的容器就强制使用tini作为init进程了。
+  ​	答：docker倒是也做了这件事。 用docker启动容器的时候 加--init参数，起来的容器就强制使用tini作为init进程了。
 
 - Linux 为什么不设计成可以kill -9 杀死僵尸进程呢？现在把希望都寄托在父亲进程的代码质量上，而要init 回收，就得把init 到 僵尸进程之间的血缘进程全部杀死。为什么要做这样的设计呢？
 
-  答：Linux进程要响应SIGKILL并且执行signal handler，只有在被进程调度到的时候才可以做。对于zombie进程，它已经是不可被调度的进程了。
+  ​	答：Linux进程要响应SIGKILL并且执行signal handler，只有在被进程调度到的时候才可以做。对于zombie进程，它已经是不可被调度的进程了。

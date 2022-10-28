@@ -49,30 +49,30 @@ root        24     9  0 07:27 pts/0    00:00:00 ps -ef
 ```c
 init/main.c
 
-        /*
-         * We try each of these until one succeeds.
-         *
-         * The Bourne shell can be used instead of init if we are
-         * trying to recover a really broken machine.
-         */
+/*
+* We try each of these until one succeeds.
+*
+* The Bourne shell can be used instead of init if we are
+* trying to recover a really broken machine.
+*/
 
-        if (execute_command) {
-                ret = run_init_process(execute_command);
-                if (!ret)
-                        return 0;
-                panic("Requested init %s failed (error %d).",
-                      execute_command, ret);
-        }
+if (execute_command) {
+	ret = run_init_process(execute_command);
+	if (!ret)
+		return 0;
+	panic("Requested init %s failed (error %d).",
+	execute_command, ret);
+}
 
-        if (!try_to_run_init_process("/sbin/init") ||
-            !try_to_run_init_process("/etc/init") ||
-            !try_to_run_init_process("/bin/init") ||
-            !try_to_run_init_process("/bin/sh"))
-                return 0;
+if (!try_to_run_init_process("/sbin/init") ||
+    !try_to_run_init_process("/etc/init") ||
+    !try_to_run_init_process("/bin/init") ||
+    !try_to_run_init_process("/bin/sh"))
+return 0;
 
 
-        panic("No working init found.  Try passing init= option to kernel. "
-              "See Linux Documentation/admin-guide/init.rst for guidance.");
+panic("No working init found.  Try passing init= option to kernel. "
+      "See Linux Documentation/admin-guide/init.rst for guidance.");
 ```
 
 ```shell
@@ -132,12 +132,12 @@ $ kill -l
 
 int main(int argc, char *argv[])
 {
-       printf("Process is sleeping\n");
-       while (1) {
-              sleep(100);
-       }
+    printf("Process is sleeping\n");
+    while (1) {
+        sleep(100);
+    }
 
-       return 0;
+    return 0;
 }
 ```
 
@@ -161,20 +161,20 @@ root        20     6  0 07:49 pts/0    00:00:00 ps -ef
 
 ​	我们是不是这样就可以得出结论——“容器里的 1 号进程，完全忽略了 SIGTERM 和 SIGKILL 信号了”呢？你先别着急，我们再拿其他语言试试。
 
-​	接下来，我们用 Golang 程序作为 1 号进程，我们再在容器中执行 `kill -9 1` 和 `kill 1` 。这次，我们发现 `kill -9 1` 这个命令仍然不能杀死 1 号进程，也就是说，SIGKILL 信号和之前的两个测试一样不起作用。但是，我们执行 kill 1 以后，SIGTERM 这个信号把 init 进程给杀了，容器退出了。
+​	接下来，我们用 Golang 程序作为 1 号进程，我们再在容器中执行 `kill -9 1` 和 `kill 1` 。这次，我们发现 `kill -9 1` 这个命令仍然不能杀死 1 号进程，也就是说，SIGKILL 信号和之前的两个测试一样不起作用。但是，我们执行 `kill 1` 以后，SIGTERM 这个信号把 init 进程给杀了，容器退出了。
 
 ```go
 # cat go-init.go
 package main
 
 import (
-       "fmt"
-       "time"
+    "fmt"
+    "time"
 )
 
 func main() {
-       fmt.Println("Start app\n")
-       time.Sleep(time.Duration(100000) * time.Millisecond)
+    fmt.Println("Start app\n")
+    time.Sleep(time.Duration(100000) * time.Millisecond)
 }
 ```
 
@@ -197,7 +197,7 @@ CONTAINER ID        IMAGE               COMMAND             CREATED             
 
 ​	对于这个测试结果，你是不是反而觉得更加困惑了？为什么使用不同程序，结果就不一样呢？接下来我们就看看 kill 命令下达之后，Linux 里究竟发生了什么事，我给你系统地梳理一下整个过程。
 
-​	在我们运行 `kill 1` 这个命令的时候，希望把 SIGTERM 这个信号发送给 1 号进程，就像下面图里的带箭头虚线。在 Linux 实现里，kill 命令调用了 kill() 的这个系统调用（所谓系统调用就是内核的调用接口）而进入到了**内核函数 sys_kill()**， 也就是下图里的实线箭头。而内核在决定把信号发送给 1 号进程的时候，会调用 sig_task_ignored() 这个函数来做个判断，这个判断有什么用呢？**它会决定内核在哪些情况下会把发送的这个信号给忽略掉。**如果信号被忽略了，那么 init 进程就不能收到指令了。所以，我们想要知道 init 进程为什么收到或者收不到信号，都要去看看 sig_task_ignored() 的这个内核函数的实现。
+​	在我们运行 `kill 1` 这个命令的时候，希望把 SIGTERM 这个信号发送给 1 号进程，就像下面图里的带箭头虚线。在 Linux 实现里，kill 命令调用了 kill() 的这个系统调用（所谓系统调用就是内核的调用接口）而进入到了**内核函数 sys_kill()**， 也就是下图里的实线箭头。而内核在决定把信号发送给 1 号进程的时候，会调用 sig_task_ignored() 这个函数来做个判断，这个判断有什么用呢？**它会决定内核在哪些情况下会把发送的这个信号给忽略掉**。如果信号被忽略了，那么 init 进程就不能收到指令了。所以，我们想要知道 init 进程为什么收到或者收不到信号，都要去看看 sig_task_ignored() 的这个内核函数的实现。
 
 ![](../../img/sig_task_ignored.jpg)
 
@@ -207,24 +207,24 @@ CONTAINER ID        IMAGE               COMMAND             CREATED             
 kernel/signal.c
 static bool sig_task_ignored(struct task_struct *t, int sig, bool force)
 {
-        void __user *handler;
-        handler = sig_handler(t, sig);
+    void __user *handler;
+    handler = sig_handler(t, sig);
 
-        /* SIGKILL and SIGSTOP may not be sent to the global init */
-        if (unlikely(is_global_init(t) && sig_kernel_only(sig)))
+    /* SIGKILL and SIGSTOP may not be sent to the global init */
+    if (unlikely(is_global_init(t) && sig_kernel_only(sig)))
 
-                return true;
+        return true;
 
-        if (unlikely(t->signal->flags & SIGNAL_UNKILLABLE) &&
-            handler == SIG_DFL && !(force && sig_kernel_only(sig)))
-                return true;
+    if (unlikely(t->signal->flags & SIGNAL_UNKILLABLE) &&
+        handler == SIG_DFL && !(force && sig_kernel_only(sig)))
+        return true;
 
-        /* Only allow kernel generated signals to this kthread */
-        if (unlikely((t->flags & PF_KTHREAD) &&
-                     (handler == SIG_KTHREAD_KERNEL) && !force))
-                return true;
+    /* Only allow kernel generated signals to this kthread */
+    if (unlikely((t->flags & PF_KTHREAD) &&
+                 (handler == SIG_KTHREAD_KERNEL) && !force))
+        return true;
 
-        return sig_handler_ignored(handler, sig);
+    return sig_handler_ignored(handler, sig);
 }
 
 ```
@@ -239,25 +239,25 @@ static bool sig_task_ignored(struct task_struct *t, int sig, bool force)
 
 ```c
 kernel/fork.c
-                       if (is_child_reaper(pid)) {
-                                ns_of_pid(pid)->child_reaper = p;
-                                p->signal->flags |= SIGNAL_UNKILLABLE;
-                        }
+if (is_child_reaper(pid)) {
+	ns_of_pid(pid)->child_reaper = p;
+	p->signal->flags |= SIGNAL_UNKILLABLE;
+}
 
 /*
  * is_child_reaper returns true if the pid is the init process
  * of the current namespace. As this one could be checked before
  * pid_ns->child_reaper is assigned in copy_process, we check
  * with the pid number.
- */
+*/
 
 static inline bool is_child_reaper(struct pid *pid)
 {
-        return pid->numbers[pid->level].nr == 1;
+	return pid->numbers[pid->level].nr == 1;
 }
 ```
 
-​	我们可以看出来，其实**最关键的一点就是 handler == SIG_DFL 。Linux 内核针对每个 Nnamespace 里的 init 进程，把只有 default handler 的信号都给忽略了。**如果我们自己注册了信号的 handler（应用程序注册信号 handler 被称作"Catch the Signal"），那么这个信号 handler 就不再是 SIG_DFL 。即使是 init 进程在接收到 SIGTERM 之后也是可以退出的。不过，由于 SIGKILL 是一个特例，因为 SIGKILL 是不允许被注册用户 handler 的（还有一个不允许注册用户 handler 的信号是 SIGSTOP），那么它只有 SIG_DFL handler。所以 init 进程是永远不能被 SIGKILL 所杀，但是可以被 SIGTERM 杀死。说到这里，我们该怎么证实这一点呢？
+​	我们可以看出来，其实**最关键的一点就是 handler == SIG_DFL 。Linux 内核针对每个 Nnamespace 里的 init 进程，把只有 default handler 的信号都给忽略了**。如果我们自己注册了信号的 handler（应用程序注册信号 handler 被称作"Catch the Signal"），那么这个信号 handler 就不再是 SIG_DFL 。即使是 init 进程在接收到 SIGTERM 之后也是可以退出的。不过，由于 SIGKILL 是一个特例，因为 SIGKILL 是不允许被注册用户 handler 的（还有一个不允许注册用户 handler 的信号是 SIGSTOP），那么它只有 SIG_DFL handler。所以 init 进程是永远不能被 SIGKILL 所杀，但是可以被 SIGTERM 杀死。说到这里，我们该怎么证实这一点呢？
 
 ​	我们可以做下面两件事来验证。
 
@@ -344,15 +344,17 @@ CONTAINER ID        IMAGE               COMMAND             CREATED             
 
 - 这一讲的最开始，有这样一个 C 语言的 init 进程，它没有注册任何信号的 handler。如果我们从 Host Namespace 向它发送 SIGTERM，会发生什么情况呢？
 
-  `kill pid` 不可以杀掉容器init进程 
+  答：`kill pid` 不可以杀掉容器init进程。 
 
-  `kill -9 pid` 可以 
+  ​		`kill -9 pid` 可以。
 
-  不同点在于SIGTERM不是内核信号，所以!(force && sig_kernel_only(sig)为True，加上前面两个if也为true，所以忽略；
+  ​		不同点在于SIGTERM不是内核信号，而且force的值也是1（因为是从不同namespace发送的），所以!(force && sig_kernel_only(sig)为True，加上前面两个if也为true，所以忽略；
 
-  SIGKILL是内核信号 !(force && sig_kernel_only(sig)为False，信号没有办法忽略，所以被杀掉
+  ​		SIGKILL是内核信号,所以 !(force && sig_kernel_only(sig)为False，信号没有办法忽略，所以被杀掉。
 
-- 不知道什么要在容器内执行，直接在去宿主机上docker kill不行么。或者直接edit一下编排文件加个环境变量啥的，不就能触发原地升级么。
+  > SIGTERM、SIGUSR1 和SIGUSR2都不是内核发送的信号。
+
+- 不知道什么要在容器内执行，直接在去宿主机上`docker kill`不行么。或者直接edit一下编排文件加个环境变量啥的，不就能触发原地升级么。
 
   答：在生产环境中，用户是没有权限登陆宿主机的。 在Pod spec部分，runtime允许修改的只有 cotainer image了。 
 
