@@ -102,7 +102,7 @@ docker run -d --rm --net=host nginx:alpine
 
 ​	**端口号映射需要使用 bridge 模式，并且在 docker run 启动容器时使用 -p 参数，形式和共享目录的 -v 参数很类似，用 : 分隔本机端口和容器端口。**
 
-​	当Docker server启动时，会在宿主机上创建一个名为docker0的虚拟网桥，此宿主机启动的Docker容器会连接到这个虚拟网桥上。Docker0使用到的技术是evth-pair技术。在默认bridge网络模式下，我们每启动一个Docker容器，Docker就会给Docker容器配置一个ip。Docker容器完成bridge网络配置的过程如下：
+​	当Docker server启动时，会在宿主机上创建一个名为docker0的虚拟网桥，此宿主机启动的Docker容器会连接到这个虚拟网桥上。Docker0使用到的技术是veth-pair技术。在默认bridge网络模式下，我们每启动一个Docker容器，Docker就会给Docker容器配置一个ip。Docker容器完成bridge网络配置的过程如下：
 
 1. 在宿主机上创建一对虚拟网卡veth pair设备。veth设备总是成对出现的，它们组成了一个数据的通道，数据从一个设备进入，就会从另一个设备出来。因此，veth设备常用来连接两个网络设备。
 2. Docker将veth pair设备的一端放在新创建的容器中，并命名为eth0。另一端放在主机中，以veth65f9这样类似的名字命名，并将这个网络设备加入到docker0网桥中。
