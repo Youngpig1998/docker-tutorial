@@ -55,6 +55,10 @@
   - [Load Average：加了CPU Cgroup限制，为什么我的容器还是很慢？](./workspace/senior/p19)
 
 - 容器内存
+  - [容器内存：我的容器为什么被杀了？](./workspace/senior/p20)
+  - [Page Cache：为什么我的容器内存使用量总是在临界点?](./workspace/senior/p21)
+  - [Swap：容器可以使用Swap空间吗？](./workspace/senior/p22)
+
 
 
 
