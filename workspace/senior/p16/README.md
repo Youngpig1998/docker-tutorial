@@ -113,7 +113,6 @@ int main(int argc, char *argv[])
 ​	比如下面的这段代码，就是为 SIGTERM 这个信号注册SIG_IGN。这样操作的效果，就是在程序运行的时候，如果收到 SIGTERM 信号，程序既不会退出，也不会在屏幕上输出 log，而是什么反应也没有，就像完全没有收到这个信号一样。
 
 ```c
-
 int main(int argc, char *argv[])
 {
 ...
@@ -207,37 +206,35 @@ int main(int argc, char *argv[])
 
 ## 解决问题
 
-​	我们在学习了 kill() 和 signal() 这个两个信号相关的系统调用之后，再回到这一讲最初的问题上，为什么在停止一个容器的时候，容器 init 进程收到的 SIGTERM 信号，而容器中其他进程却会收到 SIGKILL 信号呢？当 Linux 进程收到 SIGTERM 信号并且使进程退出，这时 Linux 内核对处理进程退出的入口点就是 do_exit() 函数，do_exit() 函数中会释放进程的相关资源，比如内存，文件句柄，信号量等等。
-
-​	Linux 内核对处理进程退出的入口点就是 do_exit() 函数，do_exit() 函数中会释放进程的相关资源，比如内存，文件句柄，信号量等等。在做完这些工作之后，它会调用一个 exit_notify() 函数，用来通知和这个进程相关的父子进程等。对于容器来说，还要考虑 Pid Namespace 里的其他进程。这里调用的就是 zap_pid_ns_processes() 这个函数，而在这个函数中，如果是处于退出状态的 init 进程，它会向 Namespace 中的其他进程都发送一个 SIGKILL 信号。整个流程如下图所示。
+​	我们在学习了 kill() 和 signal() 这个两个信号相关的系统调用之后，再回到这一讲最初的问题上，为什么在停止一个容器的时候，容器 init 进程收到的 SIGTERM 信号，而容器中其他进程却会收到 SIGKILL 信号呢？当 Linux 进程收到 SIGTERM 信号并且使进程退出，这时 Linux 内核对处理进程退出的入口点就是 do_exit() 函数，do_exit() 函数中会释放进程的相关资源，比如内存，文件句柄，信号量等等。在做完这些工作之后，它会调用一个 exit_notify() 函数，用来通知和这个进程相关的父子进程等。对于容器来说，还要考虑 Pid Namespace 里的其他进程。这里调用的就是 zap_pid_ns_processes() 这个函数，而在这个函数中，如果是处于退出状态的 init 进程，它会向 Namespace 中的其他进程都发送一个 SIGKILL 信号。整个流程如下图所示。
 
 ![](../../img/kernal.jpg)
 
 ​	你还可以看一下，内核代码是这样的。
 
 ```c
-    /*
-         * The last thread in the cgroup-init thread group is terminating.
-         * Find remaining pid_ts in the namespace, signal and wait for them
-         * to exit.
-         *
-         * Note:  This signals each threads in the namespace - even those that
-         *        belong to the same thread group, To avoid this, we would have
-         *        to walk the entire tasklist looking a processes in this
-         *        namespace, but that could be unnecessarily expensive if the
-         *        pid namespace has just a few processes. Or we need to
-         *        maintain a tasklist for each pid namespace.
-         *
-         */
+/*
+   * The last thread in the cgroup-init thread group is terminating.
+   * Find remaining pid_ts in the namespace, signal and wait for them
+   * to exit.
+   *
+   * Note:  This signals each threads in the namespace - even those that
+   *        belong to the same thread group, To avoid this, we would have
+   *        to walk the entire tasklist looking a processes in this
+   *        namespace, but that could be unnecessarily expensive if the
+   *        pid namespace has just a few processes. Or we need to
+   *        maintain a tasklist for each pid namespace.
+   *
+*/
 
-        rcu_read_lock();
-        read_lock(&tasklist_lock);
-        nr = 2;
-        idr_for_each_entry_continue(&pid_ns->idr, pid, nr) {
-                task = pid_task(pid, PIDTYPE_PID);
-                if (task && !__fatal_signal_pending(task))
-                        group_send_sig_info(SIGKILL, SEND_SIG_PRIV, task, PIDTYPE_MAX);
-        }
+	rcu_read_lock();
+	read_lock(&tasklist_lock);
+	nr = 2;
+	idr_for_each_entry_continue(&pid_ns->idr, pid, nr) {
+    	task = pid_task(pid, PIDTYPE_PID);
+    	if (task && !__fatal_signal_pending(task))
+       		group_send_sig_info(SIGKILL, SEND_SIG_PRIV, task, PIDTYPE_MAX);
+	}
 ```
 
 ​	说到这里，我们也就明白为什么容器 init 进程收到的 SIGTERM 信号，而容器中其他进程却会收到 SIGKILL 信号了。前面我讲过，SIGKILL 是个特权信号（特权信号是 Linux 为 kernel 和超级用户去删除任意进程所保留的，不能被忽略也不能被捕获）。所以进程收到这个信号后，就立刻退出了，没有机会调用一些释放资源的 handler 之后，再做退出动作。而 SIGTERM 是可以被捕获的，用户是可以注册自己的 handler 的。因此，容器中的程序在 stop container 的时候，我们更希望进程收到 SIGTERM 信号而不是 SIGKILL 信号。
@@ -249,37 +246,36 @@ int main(int argc, char *argv[])
 ```c
 int wait_and_forward_signal(sigset_t const* const parent_sigset_ptr, pid_t const child_pid) {
 
-        siginfo_t sig;
-
-        if (sigtimedwait(parent_sigset_ptr, &sig, &ts) == -1) {
-                switch (errno) {
-…
-                }
-        } else {
-                /* There is a signal to handle here */
-                switch (sig.si_signo) {
-                        case SIGCHLD:
-                                /* Special-cased, as we don't forward SIGCHLD. Instead, we'll
-                                 * fallthrough to reaping processes.
-                                 */
-                                PRINT_DEBUG("Received SIGCHLD");
-                                break;
-                        default:
-                                PRINT_DEBUG("Passing signal: '%s'", strsignal(sig.si_signo));
-                                /* Forward anything else */
-                                if (kill(kill_process_group ? -child_pid : child_pid, sig.si_signo)) {
-                                        if (errno == ESRCH) {
-                                                PRINT_WARNING("Child was dead when forwarding signal");
-                                        } else {
-                                                PRINT_FATAL("Unexpected error when forwarding signal: '%s'", strerror(errno));
-
-                                                return 1;
-                                        }
-                                }
-                                break;
-                }
+    siginfo_t sig;
+    if (sigtimedwait(parent_sigset_ptr, &sig, &ts) == -1) {
+        switch (errno) {
+                …
         }
-        return 0;
+    } else {
+        /* There is a signal to handle here */
+        switch (sig.si_signo) {
+            case SIGCHLD:
+                /* Special-cased, as we don't forward SIGCHLD. Instead, we'll
+                  * fallthrough to reaping processes.
+                */
+                PRINT_DEBUG("Received SIGCHLD");
+                break;
+            default:
+                PRINT_DEBUG("Passing signal: '%s'", strsignal(sig.si_signo));
+                /* Forward anything else */
+                if (kill(kill_process_group ? -child_pid : child_pid, sig.si_signo)) {
+                    if (errno == ESRCH) {
+                        PRINT_WARNING("Child was dead when forwarding signal");
+                    } else {
+                        PRINT_FATAL("Unexpected error when forwarding signal: '%s'", strerror(errno));
+
+                        return 1;
+                    }
+                }
+                break;
+        }
+    }
+    return 0;
 }
 ```
 
@@ -301,7 +297,7 @@ int wait_and_forward_signal(sigset_t const* const parent_sigset_ptr, pid_t const
 
 ​	我认为，解决 init 进程信号的这类问题其实并不难。我们只需要先梳理一下和这个问题相关的几个知识点，再写个小程序，让它跑在容器里，稍微做几个试验。然后，我们再看一下内核和 Docker 的源代码，就可以很快得出结论了。
 
-​	简单总结了下，子进程被kill杀死的原因是，父进程在退出时，执行do_exit中，由于是cgroup_init 组的进程，因此向所有的子进程发送了sigkill信号。而导致这个的原因是，一般情况下，容器起来的第一个进程都不是专业的init进程，没有考虑过这些细节问题。由于正常情况下，父进程被终结，信号不会传递到子进程，exit时也不会给子进程发终结命令。这会导致多进程容器在关闭时，无法被终止。为了保证容器能够被正常终结。设计者在do_exit中做文章，使用sigkill这个不可屏蔽信号，而是为了能够在没有任何前提条件的情况下，能够把容器中所有的进程关掉。而一个优雅的解决方法是，使用一个专业的init进程作为容器的第一个进程，来处理相关业务。实现容器的优雅关闭。当然，如果子进程也把SigTerm做了劫持，那也是有可能导致容器无法关闭。
+​	简单总结了下，子进程被kill杀死的原因是，父进程在退出时，执行do_exit中，由于是cgroup_init 组的进程，因此向所有的子进程发送了sigkill信号。而导致这个的原因是，一般情况下，容器起来的第一个进程都不是专业的init进程，没有考虑过这些细节问题。由于正常情况下，父进程被终结，信号不会传递到子进程，exit时也不会给子进程发终结命令。这会导致多进程容器在关闭时，无法被终止。为了保证容器能够被正常终结。设计者在do_exit中做文章，使用SIGKILL这个不可屏蔽信号，而是为了能够在没有任何前提条件的情况下，能够把容器中所有的进程关掉。而一个优雅的解决方法是，使用一个专业的init进程作为容器的第一个进程，来处理相关业务。实现容器的优雅关闭。当然，如果子进程也把SIGTERM做了劫持，那也是有可能导致容器无法关闭。
 
 
 
@@ -349,33 +345,29 @@ int wait_and_forward_signal(sigset_t const* const parent_sigset_ptr, pid_t const
   }
   ```
 
-  答：输出： 
+  ​	答：输出： 
 
   ​		Ignore SIGTERM
-
-   
 
   ​		Catch SIGTERM 
 
   ​		received SIGTERM 
 
-  
-
   ​		Default SIGTERM
 
   
 
-- 我们的胖容器肯定是多进程的，那当容器收到kill 命令的时候，我们现在也是子容器都被SIGKill 吗？还是我们其实都是配置了Init 进程，而init 进程其实都像文中说的转发了 SIGTERM 命令？如果应用程序写的不够好，不相应SIGTERM 命令。所以我们才在一段时间容器还没有被杀死的情况下执行 Kill -9 吗？我们大部分的应用程序都是web 程序，使用标准JVM , 比如 Tomcat 加 OpenJDK , 不大明白为什么不能正常响应SIGTERM 做graceful shutdown 。 Kubernetes 标准操作，当我们做OS patching的时候都是换image 的，这时候当前POD 会被干掉，我们是那个POD 因为不能响应SIGTERM 而始终处于terminating 吗？
+- 我们的胖容器肯定是多进程的，那当容器收到`kill`命令的时候，我们现在也是子容器都被SIGKILL吗？还是我们其实都是配置了init 进程，而init 进程其实都像文中说的转发了 SIGTERM 命令？如果应用程序写的不够好，不响应SIGTERM 命令。所以我们才在一段时间容器还没有被杀死的情况下执行 `kill -9` 吗？我们大部分的应用程序都是web 程序，使用标准JVM , 比如 Tomcat 加 OpenJDK , 不大明白为什么不能正常响应SIGTERM 做graceful shutdown 。 Kubernetes 标准操作，当我们做OS patching的时候都是换image 的，这时候当前POD 会被干掉，我们是那个POD 因为不能响应SIGTERM 而始终处于terminating 吗？
 
-  答：你说的情况是这样的， 胖容器的init进程其实是一个bash脚本run.sh, 由它来启动jvm的程序。 但是run.sh本身没有注册SIGTERM handler, 也不forward SIGTERM给子进程jvm。 当stop容器的时候，run.sh先收到一个SIGTERM, run.sh没有注册SIGTERM, 所以呢对SIGTERM没有反应，contaienrd过30秒，会发SIGKILL给run.sh, 这样run.sh退出do_exit()，在退出的时候同样给子进程jvm程序发送了SIGKILL而不是SIGTERM。其实呢，jvm的程序是注册了SIGTERM handler的，但是没有机会调用handler了。
+  ​	答：你说的情况是这样的， 胖容器的init进程其实是一个bash脚本run.sh, 由它来启动jvm的程序。 但是run.sh本身没有注册SIGTERM handler, 也不forward SIGTERM给子进程jvm。 当stop容器的时候，run.sh先收到一个SIGTERM, run.sh没有注册SIGTERM, 所以呢对SIGTERM没有反应，contaienrd过30秒，会发SIGKILL给run.sh, 这样run.sh退出do_exit()，在退出的时候同样给子进程jvm程序发送了SIGKILL而不是SIGTERM。其实呢，jvm的程序是注册了SIGTERM handler的，但是没有机会调用handler了。
 
--  上文所SIGTerm 发送后，触发do exit 函数，SIGkill 其实是在内核往容器内的其他子进程发送的。那当我在init 进程配置了Sig term handler 截取信号转发sigterm 以后，do exit 函数还会被调用吗？如果不被调用，do exit 里其他的退出逻辑怎么被执行呢？如果被调用，怎么就不执行sigkill 了呢？
+-  上文说SIGTERM 发送后，触发do exit 函数，SIGkILL 其实是在内核往容器内的其他子进程发送的。那当我在init 进程配置了Sigterm handler 截取信号转发sigterm 以后，do exit 函数还会被调用吗？如果不被调用，do exit 里其他的退出逻辑怎么被执行呢？如果被调用，怎么就不执行SIGKILL 了呢？
 
-  答：init 进程自己退出，还是会调用do_exit()的。所以呢，为了保证子进程先收到转发的SIGTERM, 类似tini的做法是，自己在收到SIGTERM的时候不退出，转发SIGTERM给子进程，子进程收到SIGTERM退出之后会给父进程发送SIGCHILD， tini是收到SIGCHILD之后主动整个程序退出。
+  ​	答：init 进程自己退出，还是会调用do_exit()的。所以呢，为了保证子进程先收到转发的SIGTERM, 类似tini的做法是，自己在收到SIGTERM的时候不退出，转发SIGTERM给子进程，子进程收到SIGTERM退出之后会给父进程发送SIGCHILD， tini是收到SIGCHILD之后主动整个程序退出。
 
 - tini 会把其他所有的信号都转发给它的子进程，假如我的子进程又创建了子进程(也就是tini的孙子进程)，tini会把信号转发给孙子进程吗？
 
-  答：我们可以从tini转发信号的代码看一下。如果 “kill_process_group” 没有设置， 为0时，这也是tini缺省的配置，那么SIGTERM只会转发给子进程，而子子进程就不会收到转发的SIGTERM。当子进程退出的时候，子子进程就会收到SIGKILL。 
+  ​	答：我们可以从tini转发信号的代码看一下。如果 “kill_process_group” 没有设置， 为0时，这也是tini缺省的配置，那么SIGTERM只会转发给子进程，而子子进程就不会收到转发的SIGTERM。当子进程退出的时候，子子进程就会收到SIGKILL。 
 
   ​		而如果kill_process_group > 0的时候，同时子进程与子子进程在同一个process group的时候 (缺省fork出来的子进程会和父进程在同一个process group), 那么子子进程就会收到SIGTERM   
 
@@ -383,4 +375,4 @@ int wait_and_forward_signal(sigset_t const* const parent_sigset_ptr, pid_t const
 
 - zap_pid_ns_processes()这个函数为啥是发送SIGKILL信号，不能设计成发送SIGTERM么，如果是term信号，岂不是就没有容器中子进程中收到sigkill信号的问题了么
 
-  答：不过只有SIGKILL才可以强制杀进程。如果namespace中有进程忽略了SIGTERM，那么就会有进程残留了。
+  ​	答：不过只有SIGKILL才可以强制杀进程。如果namespace中有进程忽略了SIGTERM，那么就会有进程残留了。

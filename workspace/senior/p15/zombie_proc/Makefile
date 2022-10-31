@@ -3,7 +3,7 @@ app-test: app-test.c
 	gcc -o app-test app-test.c
 
 image: app-test
-	docker build -t registry/zombie-proc:v1 .
+	docker build -t youngpig/zombie-proc:v1 .
 clean: 
 	rm -f *.o app-test
-	docker rmi registry/zombie-proc:v1
+	docker rmi youngpig/zombie-proc:v1
