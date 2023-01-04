@@ -109,7 +109,7 @@
 
 ## Blog
 
-* [Martin Fowler](https://martinfowler.com/): Chief Scientist of Thoughtworks
+* [Martin Fowler](https://martinfowler.com/)
 * [Sparkdev](https://www.cnblogs.com/sparkdev/category/927855.html?page=2)
 * [赐我白日梦](https://www.cnblogs.com/ZhuChangwu/category/1601545.html)
 
@@ -117,7 +117,7 @@
 
 ## Video
 
-
+[赐我白日梦](https://space.bilibili.com/389113782)
 
 
 
