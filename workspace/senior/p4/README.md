@@ -96,11 +96,11 @@ lo        Link encap:Local Loopback
 
 ## 二、现在，我们再一起回到前面提交镜像的操作 docker commit 上来吧
 
-​	docker commit，实际上就是在容器运行起来后，把最上层的“可读写层”，加上原先容器镜像的只读层，打包组成了一个新的镜像。当然，下面这些只读层在宿主机上是共享的，不会占用额外的空间。**上述的操作都是在宿主机上进行的。**
+​	`docker commit`，实际上就是在容器运行起来后，把最上层的“可读写层”，加上原先容器镜像的只读层，打包组成了一个新的镜像。当然，下面这些只读层在宿主机上是共享的，不会占用额外的空间。**上述的操作都是在宿主机上进行的。**
 
 ​	而由于使用了联合文件系统，你在容器里对镜像 rootfs 所做的任何修改，都会被操作系统先复制到这个可读写层，然后再修改。这就是所谓的：Copy-on-Write。
 
-​	而正如前所说，Init 层的存在，就是为了避免你执行 docker commit 时，把 Docker 自己对 /etc/hosts 等文件做的修改，也一起提交掉。
+​	而正如前所说，Init 层的存在，就是为了避免你执行 `docker commit` 时，把 Docker 自己对 /etc/hosts 等文件做的修改，也一起提交掉。
 
 ## 三、Volume 机制，允许你将宿主机上指定的目录或者文件，挂载到容器里面进行读取和修改操作。
 
@@ -123,17 +123,17 @@ $ docker run -v /home:/test ...
 
 <img src="../../img/binding_mount.jpg" alt="3" style="zoom:67%;" />
 
-​	正如上图所示，mount --bind  /home  /test，会将 /home 挂载到 /test 上。其实相当于将 /test 的 dentry，重定向到了 /home 的 inode。这样当我们修改 /test 目录时，实际修改的是 /home 目录的 inode。这也就是为何，一旦执行 umount 命令，/test 目录原先的内容就会恢复：因为修改真正发生在的，是 /home 目录里。
+​	正如上图所示，`mount --bind  /home  /test`，会将 /home 挂载到 /test 上。其实相当于将 /test 的 dentry，重定向到了 /home 的 inode。这样当我们修改 /test 目录时，实际修改的是 /home 目录的 inode。这也就是为何，一旦执行 umount 命令，/test 目录原先的内容就会恢复：因为修改真正发生在的，是 /home 目录里。
 
 ​	**所以，在一个正确的时机，进行一次绑定挂载，Docker 就可以成功地将一个宿主机上的目录或文件，不动声色地挂载到容器中。**
 
 ​	这样，进程在容器里对这个 /test 目录进行的所有操作，都实际发生在宿主机的对应目录（比如，/home，或者 /var/lib/docker/volumes/[VOLUME_ID]/_data）里，而不会影响容器镜像的内容。
 
-​	那么，这个 /test 目录里的内容，既然挂载在容器 rootfs 的可读写层，它会不会被 docker commit 提交掉呢？
+​	那么，这个 /test 目录里的内容，既然挂载在容器 rootfs 的可读写层，它会不会被 `docker commit` 提交掉呢？
 
 ​	也不会。
 
-​	这个原因其实我们前面已经提到过。容器的镜像操作，比如 docker commit，都是发生在宿主机空间的。而由于 Mount Namespace 的隔离作用，宿主机并不知道这个绑定挂载的存在。所以，在宿主机看来，容器中可读写层的 /test 目录（/var/lib/docker/aufs/mnt/[可读写层 ID]/test），**始终是空的。**
+​	这个原因其实我们前面已经提到过。容器的镜像操作，比如 `docker commit`，都是发生在宿主机空间的。而由于 Mount Namespace 的隔离作用，宿主机并不知道这个绑定挂载的存在。所以，在宿主机看来，容器中可读写层的 /test 目录（/var/lib/docker/aufs/mnt/[可读写层 ID]/test），**始终是空的。**
 
 ​	不过，由于 Docker 一开始还是要创建 /test 这个目录作为挂载点，所以执行了 docker commit 之后，你会发现新产生的镜像里，会多出来一个空的 /test 目录。毕竟，新建目录操作，又不是挂载操作，Mount Namespace 对它可起不到“障眼法”的作用。
 
@@ -181,7 +181,7 @@ text.txt
 $ ls /var/lib/docker/aufs/mnt/6780d0778b8a/test
 ```
 
-​	可以确认，容器 Volume 里的信息，并不会被 docker commit 提交掉；但这个挂载点目录 /test 本身，则会出现在新的镜像当中。
+​	可以确认，容器 Volume 里的信息，并不会被 `docker commit` 提交掉；但这个挂载点目录 /test 本身，则会出现在新的镜像当中。
 
 
 
