@@ -23,7 +23,7 @@ Docker Swarm是Docker官方提供的一款集群管理工具，其主要作用�
 
 ## 2.1 架构
 
-![](./img/docker swarm架构图.png)
+![](./img/docker-swarmarch.png)
 
 
 
@@ -33,36 +33,22 @@ Docker Swarm是Docker官方提供的一款集群管理工具，其主要作用�
 
 
 
-
-
 ## 2.2 概念
 
 **节点 (node):** 就是一台docker host上面运行了docker engine.节点分为两类:
 
-- 管理节点(manager node) 负责管理集群中的节点并向工作节点分配任务
-- 工作节点(worker node) 接收管理节点分配的任务，运行任务
-
-
+- 管理节点(manager node) ：负责管理集群中的节点并向工作节点分配任务
+- 工作节点(worker node) ：接收管理节点分配的任务，运行任务
 
 ~~~powershell
 # docker node ls
 ~~~
 
-
-
-
-
 **服务(services):** 在工作节点运行的，由多个任务共同组成
-
-
 
 ~~~powershell
 # docker service ls
 ~~~
-
-
-
-
 
 **任务(task):** 运行在工作节点上容器或容器中包含应用，是集群中调度最小管理单元
 
@@ -86,19 +72,13 @@ Docker Swarm是Docker官方提供的一款集群管理工具，其主要作用�
 
 
 
-
-
 ## 3.2 主机准备
 
 ### 3.2.1 主机名
 
-
-
 ~~~powershell
 # hostnamectl set-hostname xxx
 ~~~
-
-
 
 ~~~powershell
 说明：
@@ -109,11 +89,7 @@ sw1 工作节点1
 sw2 工作节点2
 ~~~
 
-
-
 ### 3.2.2 IP地址
-
-
 
 ~~~powershell
 编辑网卡配置文件
@@ -122,7 +98,7 @@ sw2 工作节点2
 TYPE="Ethernet"
 PROXY_METHOD="none"
 BROWSER_ONLY="no"
-BOOTPROTO="none" 修改为静态
+BOOTPROTO="static"  修改为静态
 DEFROUTE="yes"
 IPV4_FAILURE_FATAL="no"
 IPV6INIT="yes"
@@ -139,11 +115,9 @@ ONBOOT="yes"
 IPADDR="192.168.10.xxx"
 PREFIX="24"
 GATEWAY="192.168.10.2"
-DNS1="119.29.29.29"
+DNS1="223.5.5.5"
 
 ~~~
-
-
 
 ~~~powershell
 说明：
@@ -154,11 +128,7 @@ sw1 工作节点1 192.168.10.13
 sw2 工作节点2 192.168.10.14
 ~~~
 
-
-
 ### 3.2.3 主机名与IP地址解析
-
-
 
 ~~~powershell
 编辑主机/etc/hosts文件，添加主机名解析
@@ -173,11 +143,7 @@ sw2 工作节点2 192.168.10.14
 192.168.10.14 sw2
 ~~~
 
-
-
 ### 3.3.4 主机时间同步
-
-
 
 ~~~powershell
 添加计划任务，实现时间同步，同步服务器为time1.aliyun.com
@@ -193,8 +159,6 @@ crontab: installing new crontab
 
 
 ### 3.2.5 主机安全设置
-
-
 
 ~~~powershell
 关闭防火墙并查看其运行状态
@@ -219,13 +183,9 @@ SELinux status:                 disabled
 
 
 
-
-
 ## 3.3 docker安装
 
 ### 3.3.1 docker安装
-
-
 
 ~~~powershell
 下载YUM源
@@ -265,7 +225,7 @@ SELinux status:                 disabled
 
 ~~~powershell
 重启docker服务
-# ystemctl restart docker
+# systemctl restart docker
 ~~~
 
 
@@ -309,15 +269,9 @@ Commands:
 
 
 
-
-
-
-
 ### 3.4.2 在管理节点初始化
 
 > 本次在sm1上初始化
-
-
 
 ~~~powershell
 初始化集群
@@ -341,11 +295,7 @@ To add a manager to this swarm, run 'docker swarm join-token manager' and follow
 
 
 
-
-
 ### 3.4.3 添加工作节点到集群
-
-
 
 ~~~powershell
 使用初始化过程中生成的token加入集群
@@ -365,13 +315,7 @@ j42cwubrr70pwxdpmesn1cuo6 *   sm1        Ready     Active         Leader        
 
 
 
-
-
-
-
 > 如果使用的token已过期，可以再次生成新的加入集群的方法，如下命令所示。
-
-
 
 ~~~powershell
 重新生成用于添加工作点的token
@@ -402,11 +346,7 @@ mekitdu1xbpcttgupwuoiwg91     sw2        Ready     Active                       
 
 
 
-
-
 ### 3.4.4 添加管理节点到集群
-
-
 
 ~~~powershell
 生成用于添加管理节点加入集群所使用的token
@@ -451,14 +391,10 @@ mekitdu1xbpcttgupwuoiwg91     sw2        Ready     Active                       
 
 #### 3.4.5.1 停止docker服务并查看结果
 
-
-
 ~~~powershell
 停止docker服务
 [root@sm1 ~]# systemctl stop docker
 ~~~
-
-
 
 ~~~powershell
 查看node状态，发现sm1不可达，状态为未知，并重启选择出leader
@@ -492,10 +428,6 @@ xc2x9z1b33rwdfxc5sdpobf0i     sm3        Ready     Active         Reachable     
 4yb34kuma6i9g5hf30vkxm9yc     sw1        Ready     Active                          20.10.12
 mekitdu1xbpcttgupwuoiwg91     sw2        Ready     Active                          20.10.12
 ~~~
-
-
-
-
 
 # 四、docker swarm集群应用
 
@@ -610,8 +542,6 @@ CMD /usr/sbin/nginx
 
 
 
-
-
 ## 4.2 发布服务
 
 在docker swarm中,对外暴露的是服务（service)，而不是容器。
@@ -621,8 +551,6 @@ CMD /usr/sbin/nginx
 ### 4.2.1 使用`docker service ls`查看服务
 
 >在管理节点（manager node）上操作
-
-
 
 ~~~powershell
 [root@sm1 ~]# docker service ls
@@ -655,13 +583,7 @@ verify: Service converged
 
 
 
-
-
-
-
 ### 4.2.3 查看已发布服务
-
-
 
 ~~~powershell
 [root@sm1 ~]# docker service ls
@@ -672,8 +594,6 @@ ucif0ibkjqrd   nginx-svc-1   replicated   1/1        192.168.10.15/library/nginx
 
 
 ### 4.2.4 查看已发布服务容器
-
-
 
 ~~~powershell
 [root@sm1 ~]# docker service ps  nginx-svc-1
@@ -690,11 +610,7 @@ CONTAINER ID   IMAGE                            COMMAND                  CREATED
 1bdf8981f511   192.168.10.15/library/nginx:v1   "/docker-entrypoint.…"   53 minutes ago   Up 53 minutes   80/tcp    nginx-svc-1.1.47t0s0egf6xf1n8m0c0jez3q0
 ~~~
 
-
-
 ### 4.2.5 访问已发布的服务
-
-
 
 ~~~powershell
 [root@sm1 ~]# curl http://192.168.10.10
@@ -720,8 +636,6 @@ v1
 ## 4.3 服务扩展
 
 使用scale指定副本数来扩展
-
-
 
 ~~~powershell
 [root@sm1 ~]# docker service scale nginx-svc-1=2
@@ -784,8 +698,6 @@ overall progress: 3 out of 3 tasks
 verify: Service converged
 ~~~
 
-
-
 ~~~powershell
 [root@sm1 ~]# docker service ps nginx-svc-1
 ID             NAME            IMAGE                            NODE      DESIRED STATE   CURRENT STATE               ERROR     PORTS
@@ -794,14 +706,10 @@ oy16nuh5udn0   nginx-svc-1.2   192.168.10.15/library/nginx:v1   sw2       Runnin
 mn9fwxqbc9d1   nginx-svc-1.3   192.168.10.15/library/nginx:v1   sm1       Running         Running 9 minutes ago
 ~~~
 
-
-
 ~~~powershell
 说明：
 当把服务扩展到一定数量时，管理节点也会参与到负载运行中来。
 ~~~
-
-
 
 
 
@@ -840,8 +748,6 @@ oy16nuh5udn0   nginx-svc-1.2   192.168.10.15/library/nginx:v1   sw2       Runnin
 ## 4.5 负载均衡
 
 > 服务中包含多个容器时，每次访问将以轮询的方式访问到每个容器
-
-
 
 ~~~powershell
 修改sw1主机中容器网页文件
@@ -888,18 +794,10 @@ sw2 web
 [root@sm1 ~]# docker service ls
 ID             NAME          MODE         REPLICAS   IMAGE                            PORTS
 ucif0ibkjqrd   nginx-svc-1   replicated   2/2        192.168.10.15/library/nginx:v1   *:80->80/tcp
-~~~
 
-
-
-~~~powershell
 [root@sm1 ~]# docker service rm nginx-svc-1
 nginx-svc-1
-~~~
 
-
-
-~~~powershell
 [root@sm1 ~]# docker service ls
 ID        NAME      MODE      REPLICAS   IMAGE     PORTS
 ~~~
@@ -916,14 +814,10 @@ overall progress: 1 out of 1 tasks
 verify: Service converged
 ~~~
 
-
-
 ~~~powershell
 [root@sm1 ~]# curl http://192.168.10.10
 v1
 ~~~
-
-
 
 ~~~powershell
 [root@sm1 ~]# docker service update nginx-svc --image 192.168.10.15/library/nginx:v2
@@ -967,10 +861,6 @@ overall progress: 60 out of 60 tasks
 verify: Service converged
 ~~~
 
-
-
-
-
 ~~~powershell
 [root@sm1 ~]# docker service update --replicas 60 --image 192.168.10.15/library/nginx:v2 --update-parallelism 5 --update-delay 30s nginx-svc
 nginx-svc
@@ -1004,8 +894,6 @@ Are you sure you want to continue? [y/N] y
 ## 4.10 副本控制器
 
 > 副本控制器
-
-
 
 ~~~powershell
 [root@sm1 ~]# docker service ls
@@ -1115,12 +1003,6 @@ mrkgccdfddy8   tomcat-net        overlay   swarm
 
 
 
-
-
-
-
-
-
 ~~~powershell
 # docker service create --name tomcat \
 --network tomcat-net \
@@ -1155,10 +1037,6 @@ gq0ogycj7orb   tomcat.2   tomcat:7.0.96-jdk8-openjdk   sm2       Running        
 
 
 
-
-
-
-
 ![image-20220216222436884](./img/image-20220216222436884.png)
 
 
@@ -1169,11 +1047,9 @@ gq0ogycj7orb   tomcat.2   tomcat:7.0.96-jdk8-openjdk   sm2       Running        
 
 ## 4.12 服务网络模式
 
-
-
 - 服务模式一共有两种：Ingress和Host，如果不指定，则默认的是Ingress；
 
-  - Ingress模式下，到达Swarm任何节点的8080端口的流量，都会映射到任何服务副本的内部80端口，就算该节点上没有tomcat服务副本也会映射；
+  - Ingress模式下，到达Swarm任何节点的8080端口的流量，都会映射到任何服务副本的内部8080端口，就算该节点上没有tomcat服务副本也会映射；
 
   
 
@@ -1278,8 +1154,8 @@ tomcat:7.0.96-jdk8-openjdk
 ~~~powershell
 [root@sm1 ~]# docker service ps tomcat
 ID             NAME       IMAGE                        NODE      DESIRED STATE   CURRENT STATE            ERROR     PORTS
-x6022h0oungs   tomcat.1   tomcat:7.0.96-jdk8-openjdk   sw1       Running         Running 19 seconds ago             *:8080->8080/tcp,*:8080->8080/tcp
 jmnthwqi6ubf   tomcat.2   tomcat:7.0.96-jdk8-openjdk   sm1       Running         Running 18 seconds ago             *:8080->8080/tcp,*:8080->8080/tcp
+x6022h0oungs   tomcat.1   tomcat:7.0.96-jdk8-openjdk   sw1       Running         Running 19 seconds ago             *:8080->8080/tcp,*:8080->8080/tcp
 nvcbijnfy2es   tomcat.3   tomcat:7.0.96-jdk8-openjdk   sw2       Running         Running 19 seconds ago             *:8080->8080/tcp,*:8080->8080/tcp
 
 ~~~
@@ -1292,25 +1168,17 @@ tcp    LISTEN     0      128       *:8080                  *:*                  
 tcp    LISTEN     0      128    [::]:8080               [::]:*                   users:(("docker-proxy",pid=20967,fd=4))
 ~~~
 
-
-
-
-
 ~~~powershell
 [root@sw1 ~]# ss -anput | grep ":8080"
 tcp    LISTEN     0      128       *:8080                  *:*                   users:(("docker-proxy",pid=20459,fd=4))
 tcp    LISTEN     0      128    [::]:8080               [::]:*                   users:(("docker-proxy",pid=20463,fd=4))
 ~~~
 
-
-
 ~~~powershell
 [root@sw2 ~]# ss -anput | grep ":8080"
 tcp    LISTEN     0      128       *:8080                  *:*                   users:(("docker-proxy",pid=19938,fd=4))
 tcp    LISTEN     0      128    [::]:8080               [::]:*                   users:(("docker-proxy",pid=19942,fd=4))
 ~~~
-
-
 
 
 
@@ -1422,15 +1290,12 @@ sw2 web
 
 > 本案例以NFS提供远程存储为例
 
-
-
 > 在192.168.10.15服务器上部署NFS服务，共享目录为docker swarm集群主机使用。
 
 
 
 ~~~powershell
 [root@harbor ~]# mkdir /opt/dockervolume
-
 ~~~
 
 
@@ -1451,7 +1316,6 @@ sw2 web
 
 ~~~powershell
 [root@harbor ~]# systemctl enable nfs-server
-
 [root@harbor ~]# systemctl start nfs-server
 ~~~
 
@@ -1473,8 +1337,6 @@ Export list for harbor:
 # yum -y install nfs-utils
 ~~~
 
-
-
 ~~~powershell
 # showmount -e 192.168.10.15
 Export list for 192.168.10.15:
@@ -1486,8 +1348,6 @@ Export list for 192.168.10.15:
 #### 4.13.2.3 创建存储卷
 
 > 集群中所有节点
-
-
 
 ~~~powershell
 # docker volume create  --driver local --opt type=nfs --opt o=addr=192.168.10.15,rw --opt device=:/opt/dockervolume nginx_volume
@@ -1614,9 +1474,9 @@ nfs test
 
 **方法2:**
 
-将mysql服务等运行在内部网络,只需要nginx服务能够连接mysql就可以了,在docker swarm中可以使用==**overlay**==网络来实现。
+将mysql服务等运行在内部网络,只需要nginx服务能够连接mysql就可以了,在docker swarm中可以使用**overlay**网络来实现。
 
-但现在还有个问题,服务副本数发生变化时,容器内部的IP发生变化时,我们希望仍然能够访问到这个服务, 这就是**==服务发现（service discovery)==**.
+但现在还有个问题,服务副本数发生变化时,容器内部的IP发生变化时,我们希望仍然能够访问到这个服务, 这就是**服务发现（service discovery)**。
 
 **通过服务发现, service的使用者都不需要知道service运行在哪里,IP是多少,有多少个副本,就能让service通信**
 
@@ -1664,7 +1524,7 @@ mrkgccdfddy8   tomcat-net        overlay   swarm
 
 **验证自动发现**
 
-1, 发布nignx-svc服务,指定在自建的overlay网络
+1、 发布nignx-svc服务,指定在自建的overlay网络
 
 ~~~powershell
 [root@sm1 ~]# docker service create --name nginx-svc --replicas 3 --network self-network --publish 80:80  192.168.10.15/library/nginx:v1
@@ -1676,7 +1536,7 @@ overall progress: 3 out of 3 tasks
 verify: Service converged
 ~~~
 
-2, 发布一个busybox服务,也指定在自建的overlay网络
+2、发布一个busybox服务,也指定在自建的overlay网络
 
 ~~~powershell
 [root@sm1 ~]# docker service create --name test --network self-network  busybox sleep 100000
@@ -1694,7 +1554,7 @@ verify: Service converged
 * 没有指定副本,默认1个副本
 * 因为它并不是长时间运行的daemon守护进程,所以运行一下就会退出.sleep 100000是指定一个长的运行时间,让它有足够的时间给我们测试
 
-3, 查出test服务在哪个节点运行的容器
+3、查出test服务在哪个节点运行的容器
 
 ~~~powershell
 [root@sm1 ~]# docker service ps test
@@ -1702,7 +1562,7 @@ ID             NAME      IMAGE            NODE      DESIRED STATE   CURRENT STAT
 x8nkifpdtyw5   test.1    busybox:latest   sm2       Running         Running about a minute ago
 ~~~
 
-4, 去运行test服务的容器节点查找容器的名称
+4、去运行test服务的容器节点查找容器的名称
 
 ~~~powershell
 [root@sm2 ~]# docker ps
@@ -1710,7 +1570,7 @@ CONTAINER ID   IMAGE            COMMAND          CREATED              STATUS    
 8df13819bd5c   busybox:latest   "sleep 100000"   About a minute ago   Up About a minute             test.1.x8nkifpdtyw5177zhr0r1lxad
 ~~~
 
-5, 使用查找出来的容器名称,执行命令测试
+5、使用查找出来的容器名称,执行命令测试
 
 ~~~powershell
 [root@sm2 ~]# docker exec -it test.1.x8nkifpdtyw5177zhr0r1lxad ping -c 2 nginx-svc
@@ -1750,9 +1610,7 @@ round-trip min/avg/max = 0.093/0.127/0.162 ms
 
 
 
-6, 分别去各个节点查找nginx_service服务的各个容器(3个副本),发现它们的IP与上面ping的IP都不同
-
-
+6、分别去各个节点查找nginx_service服务的各个容器(3个副本),发现它们的IP与上面ping的IP都不同
 
 ~~~powershell
 [root@sm1 ~]# docker inspect nginx-svc.1.6nxixaw3tn2ld3vklfjldnpl5 | grep IPAddress
@@ -1762,8 +1620,6 @@ round-trip min/avg/max = 0.093/0.127/0.162 ms
                     "IPAddress": "192.168.100.3",
 ~~~
 
-
-
 ~~~powershell
 [root@sw1 ~]# docker inspect nginx-svc.3.steywkaxfboynglx4bsji6jd1 | grep -i ipaddress
             "SecondaryIPAddresses": null,
@@ -1771,8 +1627,6 @@ round-trip min/avg/max = 0.093/0.127/0.162 ms
                     "IPAddress": "10.0.0.39",
                     "IPAddress": "192.168.100.5",
 ~~~
-
-
 
 ~~~powershell
 [root@sw2 ~]# docker inspect nginx-svc.2.rz1iifb9eg0tos7r59cbesucd | grep -i ipaddress
@@ -1784,7 +1638,7 @@ round-trip min/avg/max = 0.093/0.127/0.162 ms
 
 
 
-7, 后续测试, 将nginx_service服务扩展,裁减,更新,回退.都不影响test服务访问nginx-svc。
+7、后续测试, 将nginx_service服务扩展,裁减,更新,回退.都不影响test服务访问nginx-svc。
 
 
 
@@ -1797,7 +1651,7 @@ round-trip min/avg/max = 0.093/0.127/0.162 ms
 在 Swarm Service 中有三个重要的网络概念：
 
 -  **Overlay networks** 管理 Swarm 中 Docker 守护进程间的通信。你可以将服务附加到一个或多个已存在的 `overlay` 网络上，使得服务与服务之间能够通信。
--  **ingress network** 是一个特殊的 `overlay` 网络，用于服务节点间的负载均衡。当任何 Swarm 节点在发布的端口上接收到请求时，它将该请求交给一个名为 `IPVS` 的模块。`IPVS` 跟踪参与该服务的所有IP地址，选择其中的一个，并通过 `ingress` 网络将请求路由到它。
+-  **ingress network** 是一个特殊的 `overlay` 网络，用于服务节点间的**负载均衡**。当任何 Swarm 节点在发布的端口上接收到请求时，它将该请求交给一个名为 `IPVS` 的模块。`IPVS` 跟踪参与该服务的所有IP地址，选择其中的一个，并通过 `ingress` 网络将请求路由到它。
    初始化或加入 Swarm 集群时会自动创建 `ingress` 网络，大多数情况下，用户不需要自定义配置，但是 docker 17.05 和更高版本允许你自定义。
 -  **docker_gwbridge**是一种桥接网络，将 `overlay` 网络（包括 `ingress` 网络）连接到一个单独的 Docker 守护进程的物理网络。默认情况下，服务正在运行的每个容器都连接到本地 Docker 守护进程主机的 `docker_gwbridge` 网络。
    `docker_gwbridge` 网络在初始化或加入 Swarm 时自动创建。大多数情况下，用户不需要自定义配置，但是 Docker 允许自定义。
@@ -1808,7 +1662,7 @@ round-trip min/avg/max = 0.093/0.127/0.162 ms
 | ingress         | overlay | none |
 | custom-network  | overlay | none |
 
-- docker_gwbridge和ingress是swarm自动创建的，当用户执行了docker swarm init/connect之后。
+- docker_gwbridge和ingress是swarm自动创建的，当用户执行了`docker swarm init/connect` 之后。
 
 - docker_gwbridge是bridge类型的负责本机container和主机直接的连接
 
@@ -1817,10 +1671,6 @@ round-trip min/avg/max = 0.093/0.127/0.162 ms
 - custom-network是用户自己创建的overlay网络，通常我们都需要创建自己的network并把service挂在上面。
 
  ![service ingress image](./img/ingress-routing-mesh.png)
-
-
-
-
 
 
 
@@ -1839,8 +1689,8 @@ yaml可以发布多个服务，但是使用docker-compose只能在一台主机�
 ## 5.2 docker stack与docker compose区别
 
 - Docker stack会忽略了“构建”指令，无法使用stack命令构建新镜像，它是需要镜像是预先已经构建好的。 所以docker-compose更适合于开发场景；
-- Docker Compose是一个Python项目，在内部，它使用Docker API规范来操作容器。所以需要安装Docker -compose，以便与Docker一起在您的计算机上使用；
-- Docker Stack功能包含在Docker引擎中。你不需要安装额外的包来使用它，docker stacks 只是swarm mode的一部分。
+- Docker Compose是一个Python项目，在内部，它使用Docker API规范来操作容器。所以需要安装docker compose，以便与Docker一起在您的计算机上使用；
+- Docker Stack功能包含在Docker引擎中。你不需要安装额外的包来使用它，**docker stacks 只是swarm mode的一部分**。
 - Docker stack不支持基于第2版写的docker-compose.yml ，也就是version版本至少为3。然而Docker Compose对版本为2和3的 文件仍然可以处理；
 - docker stack把docker compose的所有工作都做完了，因此docker stack将占主导地位。同时，对于大多数用户来说，切换到使用docker stack既不困难，也不需要太多的开销。如果您是Docker新手，或正在选择用于新项目的技术，请使用docker stack。
 
@@ -1861,7 +1711,7 @@ yaml可以发布多个服务，但是使用docker-compose只能在一台主机�
 
 ## 5.4 部署wordpress案例
 
-1, 编写YAML文件
+1、编写YAML文件
 
 ~~~powershell
 [root@sm1 ~]# vim stack1.yaml
@@ -1901,7 +1751,7 @@ services:
 
 
 
-2, 使用docker stack发布
+2、使用docker stack发布
 
 ~~~powershell
 [root@sm1 ~]# docker stack deploy -c stack1.yaml stack1
@@ -2013,13 +1863,7 @@ jpp7h6qheh4j   stack2_portainer.1    portainer/portainer:latest        sm1      
 ty0mktx60typ   stack2_visualizer.1   dockersamples/visualizer:latest   sm1       Running         Starting 22 seconds ago
 ~~~
 
-
-
-
-
-3,验证
-
-
+3、验证
 
 ![image-20220217102606092](./img/image-20220217102606092.png)
 
@@ -2029,13 +1873,9 @@ ty0mktx60typ   stack2_visualizer.1   dockersamples/visualizer:latest   sm1      
 
 
 
-
-
-
-
 ## 5.6 nginx+haproxy+nfs案例
 
-1,在docker swarm管理节点上准备配置文件
+1、在docker swarm管理节点上准备配置文件
 
 ~~~powershell
 [root@sm1 ~]# mkdir -p /docker-stack/haproxy
@@ -2131,7 +1971,7 @@ volumes:
       device: ":/opt/dockervolume"
 ~~~
 
-3, 发布
+3、发布
 
 ~~~powershell
 [root@sm1 haproxy]# docker stack deploy -c stack3.yml stack3
@@ -2142,7 +1982,7 @@ Creating service stack3_nginx1
 Creating service stack3_nginx2
 ~~~
 
-4, 验证
+4、验证
 
 
 
@@ -2154,5 +1994,5 @@ Creating service stack3_nginx2
 
 
 
-
+参考：[实战Docker容器调度](https://www.cnblogs.com/ZhuChangwu/p/13717405.html)
 
