@@ -17,7 +17,7 @@
 ![img](https://images2018.cnblogs.com/blog/952033/201809/952033-20180909172434004-389303785.png)
 
 ​	对于 subuid，这一行记录的含义为：
-​	**用户 nick，在当前的 user namespace 中具有 65536 个从属用户，用户 ID 为 100000-165535，在一个子 user namespace 中，这些从属用户被映射成 ID 为 0-65535 的用户。**subgid 的含义和 subuid 相同。
+​	**用户 nick，在当前的 user namespace 中具有 65536 个从属用户，用户 ID 为 100000-165535，在一个子 user namespace 中，这些从属用户被映射成 ID 为 0-65535 的用户**。subgid 的含义和 subuid 相同。
 
 ​	比如说用户 nick 在宿主机上只是一个具有普通权限的用户。我们可以把他的一个从属 ID(比如 100000 )分配给容器所属的 user namespace，并把 ID 100000 映射到该 user namespace 中的 uid 0。此时即便容器中的进程具有 root 权限，但也仅仅是在容器所在的 user namespace 中，一旦到了宿主机中，你顶多也就有 nick 用户的权限而已。
 
@@ -191,7 +191,7 @@ $ yum install docker
 
 ```shell
 $ echo "shannyn:1000:65536" >> /etc/subuid
-$ echo "shannyn:1000:65536" >> /etc/subuid
+$ echo "shannyn:1000:65536" >> /etc/subgid
 ```
 
 ​	**意思是容器内id为0的用户，将会映射到host上id为1000的用户，后面65536个用户也会跟着做映射。**
@@ -228,5 +228,5 @@ $ systemctl restart docker
 
 ## 总结
 
-​	Docker 是支持 user namespace 的，并且配置的方式也非常简便。在开启 user namespace 之后我们享受到了安全性的提升，但同时也会因为种种限制让其它的个别功能出现问题。这时我们需要作出选择，告别一刀切的决策，让合适的功能出现的合适的场景中。
+​	Docker 是支持 user namespace 的，并且配置的方式也非常简便。在开启 user namespace 之后我们享受到了安全性的提升，但同时也会因为种种限制让其它的个别功能出现问题。这时我们需要作出选择，告别一刀切的决策，让合适的功能出现在合适的场景中。
 
