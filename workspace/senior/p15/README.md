@@ -7,7 +7,7 @@
 ​	你可以自己做个容器镜像来模拟一下，我们先下载这个[例子](./zombie_proc)，运行 `make image` 之后，再启动容器。在容器里我们可以看到，1 号进程 fork 出 1000 个子进程。当这些子进程运行结束后，它们的进程名字后面都加了标识。从它们的 Z stat（进程状态）中我们可以知道，这些都是僵尸进程（Zombie Process）。运行 top 命令，我们也可以看到输出的内容显示有 1000 zombie 进程。
 
 ```shell
-# docker run --name zombie-proc -d registry/zombie-proc:v1
+# docker run --name zombie-proc -d youngpig/zombie-proc:v1
 02dec161a9e8b18922bd3599b922dbd087a2ad60c9b34afccde7c91a463bde8a
 # docker exec -it zombie-proc bash
 # ps aux
@@ -79,7 +79,7 @@ Filesystem     1K-blocks  Used Available Use% Mounted on
 cgroup                 0     0         0    - /sys/fs/cgroup/pids
 # docker ps
 CONTAINER ID        IMAGE                      COMMAND                  CREATED             STATUS              PORTS               NAMES
-7ecd3aa7fdc1        registry/zombie-proc:v1   "/app-test 1000"         37 hours ago        Up 37 hours                             frosty_yalow
+7ecd3aa7fdc1        youngpig/zombie-proc:v1   "/app-test 1000"         37 hours ago        Up 37 hours                             frosty_yalow
 
 # pwd
 /sys/fs/cgroup/pids/system.slice/docker-7ecd3aa7fdc15a1e183813b1899d5d939beafb11833ad6c8b0432536e5b9871c.scope
@@ -97,7 +97,7 @@ cgroup.clone_children  cgroup.procs  notify_on_release  pids.current  pids.event
 
 ​	在前面 Linux 进程状态的介绍里，我们知道了，僵尸进程是 Linux 进程退出状态的一种。
 
-​	从内核进程的 do_exit() 函数我们也可以看到，这时候进程 task_struct 里的 mm/shm/sem/files 等文件资源都已经释放了，只留下了一个 stask_struct instance 空壳。就像下面这段代码显示的一样，从进程对应的 /proc/ 文件目录下，我们也可以看出来，对应的资源都已经没有了。
+​	从内核进程的 do_exit() 函数我们也可以看到，这时候进程 task_struct 里的 mm/shm/sem/files 等文件资源都已经释放了，只留下了一个 stask_struct instance 空壳。就像下面这段代码显示的一样，从进程对应的 /proc/pid 文件目录下，我们也可以看出来，对应的资源都已经没有了。
 
 ```shell
 # cat /proc/6/cmdline

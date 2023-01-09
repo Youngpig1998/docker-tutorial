@@ -11,7 +11,7 @@
 ```shell
 
 # docker stop sig-proc;docker rm sig-proc
-# docker run --name sig-proc -d registry/sig-proc:v1 /init.sh
+# docker run --name sig-proc -d youngpig/sig-proc:v1 /init.sh
 # docker exec -it sig-proc bash
 [root@5cc69036b7b2 /]# ps -ef
 UID        PID  PPID  C STIME TTY          TIME CMD
@@ -44,7 +44,7 @@ root        24     9  0 07:27 pts/0    00:00:00 ps -ef
 
 ​	目前主流的 Linux 发行版，无论是 RedHat 系的还是 Debian 系的，都会把 /sbin/init 作为符号链接指向 Systemd。Systemd 是目前最流行的 Linux init 进程，在它之前还有 SysVinit、UpStart 等 Linux init 进程。
 
-​	**但无论是哪种 Linux init 进程，它最基本的功能都是创建出 Linux 系统中其他所有的进程，并且管理这些进程。**具体在 kernel 里的代码实现如下：
+​	**但无论是哪种 Linux init 进程，它最基本的功能都是创建出 Linux 系统中其他所有的进程，并且管理这些进程**。具体在 kernel 里的代码实现如下：
 
 ```c
 init/main.c
@@ -109,7 +109,7 @@ $ kill -l
 
 ​	进程在收到信号后，就会去做相应的处理。怎么处理呢？对于每一个信号，进程对它的处理都有下面三个选择。
 
-- 第一个选择是忽略（Ignore），就是对这个信号不做任何处理，**但是有两个信号例外，对于 SIGKILL 和 SIGSTOP 这个两个信号，进程是不能忽略的。**这是因为它们的主要作用是为 Linux kernel 和超级用户提供删除任意进程的特权。
+- 第一个选择是忽略（Ignore），就是对这个信号不做任何处理，**但是有两个信号例外，对于 SIGKILL 和 SIGSTOP 这个两个信号，进程是不能忽略的**。这是因为它们的主要作用是为 Linux kernel 和超级用户提供删除任意进程的特权。
 - 第二个选择，就是捕获（Catch），这个是指让用户进程可以注册自己针对这个信号的 handler。具体怎么做我们目前暂时涉及不到，你先知道就行，我们在后面课程会进行详细介绍。**对于捕获，SIGKILL 和 SIGSTOP 这两个信号也同样例外，这两个信号不能有用户自己的处理代码，只能执行系统的缺省行为。**
 - 还有一个选择是缺省行为（Default），Linux 为每个信号都定义了一个缺省的行为，你可以在 Linux 系统中运行 `man 7 signal`来查看每个信号的缺省行为。对于大部分的信号而言，应用程序不需要注册自己的 handler，使用系统缺省定义行为就可以了。
 
@@ -119,7 +119,7 @@ $ kill -l
 
 ​	首先我们来看 SIGTERM（15），这个信号是 Linux 命令 kill 缺省发出的。前面例子里的命令 `kill 1` ，就是通过 kill 向 1 号进程发送一个信号，在没有别的参数时，这个信号类型就默认为 SIGTERM。SIGTERM 这个信号是可以被捕获的，这里的“捕获”指的就是用户进程可以为这个信号注册自己的 handler，而这个 handler，我们后面会看到，它可以处理进程的 graceful-shutdown 问题。我们再来了解一下 SIGKILL (9)，这个信号是 Linux 里两个**特权信号**之一。
 
-​	什么是特权信号呢？前面我们已经提到过了，**特权信号就是 Linux 为 kernel 和超级用户去删除任意进程所保留的，不能被忽略也不能被捕获。**那么进程一旦收到 SIGKILL，就要退出。在前面的例子里，我们运行的命令 `kill -9 1` 里的参数“-9”，其实就是指发送编号为 9 的这个 SIGKILL 信号给 1 号进程。
+​	什么是特权信号呢？前面我们已经提到过了，**特权信号就是 Linux 为 kernel 和超级用户去删除任意进程所保留的，不能被忽略也不能被捕获**。那么进程一旦收到 SIGKILL，就要退出。在前面的例子里，我们运行的命令 `kill -9 1` 里的参数“-9”，其实就是指发送编号为 9 的这个 SIGKILL 信号给 1 号进程。
 
 ## 现象解释
 
@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
 
 ```shell
 # docker stop sig-proc;docker rm sig-proc
-# docker run --name sig-proc -d registry/sig-proc:v1 /c-init-nosig
+# docker run --name sig-proc -d youngpig/sig-proc:v1 /c-init-nosig
 # docker exec -it sig-proc bash
 [root@5d3d42a031b1 /]# ps -ef
 UID        PID  PPID  C STIME TTY          TIME CMD
@@ -180,7 +180,7 @@ func main() {
 
 ```shell
 # docker stop sig-proc;docker rm sig-proc
-# docker run --name sig-proc -d registry/sig-proc:v1 /go-init
+# docker run --name sig-proc -d youngpig/sig-proc:v1 /go-init
 # docker exec -it sig-proc bash
 
 

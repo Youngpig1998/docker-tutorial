@@ -15,7 +15,7 @@
 ​	那么，我们就一起来看看当容器退出的时候，如何才能让容器中的进程都收到 SIGTERM 信号，而不是 SIGKILL 信号。延续前面中处理问题的思路，我们同样可以运行一个简单的容器，来重现这个问题，用这里的[代码](./fwd_sig)执行一下 `make image` ，然后用 Docker 启动这个容器镜像。
 
 ```shell
-docker run -d --name fwd_sig registry/fwd_sig:v1 /c-init-sig
+docker run -d --name fwd_sig youngpig/fwd_sig:v1 /c-init-sig
 ```
 
 ​	你会发现，在我们用 `docker stop` 停止这个容器的时候，如果用 strace 工具来监控，就能看到容器里的 init 进程和另外一个进程收到的信号情况。在下面的例子里，进程号为 15909 的就是容器里的 init 进程，而进程号为 15959 的是容器里另外一个进程。在命令输出中我们可以看到，init 进程（15909）收到的是 SIGTERM 信号，而另外一个进程（15959）收到的果然是 SIGKILL 信号。
@@ -23,7 +23,7 @@ docker run -d --name fwd_sig registry/fwd_sig:v1 /c-init-sig
 ```shell
 
 # ps -ef | grep c-init-sig
-root     15857 14391  0 06:23 pts/0    00:00:00 docker run -it registry/fwd_sig:v1 /c-init-sig
+root     15857 14391  0 06:23 pts/0    00:00:00 docker run -it youngpig/fwd_sig:v1 /c-init-sig
 root     15909 15879  0 06:23 pts/0    00:00:00 /c-init-sig
 root     15959 15909  0 06:23 pts/0    00:00:00 /c-init-sig
 root     16046 14607  0 06:23 pts/3    00:00:00 grep --color=auto c-init-sig
@@ -50,7 +50,7 @@ restart_syscall(<... resuming interrupted read ...>) = ?
 
 ​	这里呢，我们可以结合前面讲过的信号来理解这两个系统调用。
 
-​	在容器 init 进程的[为什么我在容器中不能kill 1号进程](../p14)里，我们介绍过信号的基本概念了，**信号就是 Linux 进程收到的一个通知。**等你学完如何使用这两个系统调用之后，就会更清楚 Linux 信号是怎么一回事，遇到容器里信号相关的问题，你就能更好地理清思路了。我还会再给你举个使用函数的例子，帮助你进一步理解进程是如何实现 graceful shutdown 的。
+​	在容器 init 进程的[为什么我在容器中不能kill 1号进程](../p14)里，我们介绍过信号的基本概念了，**信号就是 Linux 进程收到的一个通知**。等你学完如何使用这两个系统调用之后，就会更清楚 Linux 信号是怎么一回事，遇到容器里信号相关的问题，你就能更好地理清思路了。我还会再给你举个使用函数的例子，帮助你进一步理解进程是如何实现 graceful shutdown 的。
 
 ​	进程对信号的处理其实就包括两个问题，**一个是进程如何发送信号，另一个是进程收到信号后如何处理。**
 
@@ -81,7 +81,7 @@ SYNOPSIS
 	sighandler_t signal(int signum, sighandler_t handler);
 ```
 
-​	在容器 init 进程的[为什么我在容器中不能kill 1号进程](../p14)里，我们学过进程对每种信号的处理，**包括三个选择：调用系统缺省行为、捕获、忽略。**而这里的选择，其实就是程序中如何去调用 signal() 这个系统调用。
+​	在容器 init 进程的[为什么我在容器中不能kill 1号进程](../p14)里，我们学过进程对每种信号的处理，**包括三个选择：调用系统缺省行为、捕获、忽略**。而这里的选择，其实就是程序中如何去调用 signal() 这个系统调用。
 
 ​	第一个选择就是缺省，如果我们在代码中对某个信号，比如 SIGTERM 信号，不做任何 signal() 相关的系统调用，那么在进程运行的时候，如果接收到信号 SIGTERM，进程就会执行内核中 SIGTERM 信号的缺省代码。
 
@@ -289,7 +289,7 @@ int wait_and_forward_signal(sigset_t const* const parent_sigset_ptr, pid_t const
 
 ​	这一讲我们要解决的问题是让容器中的进程，在容器停止的时候，有机会 graceful shutdown，而不是收到 SIGKILL 信号而被强制杀死。
 
-​	首先我们通过对 kill() 和 signal() 这个两个系统调用的学习，进一步理解了进程是怎样处理 Linux 信号的，重点是信号在接收处理的三个选择：**忽略，捕获和缺省行为。**
+​	首先我们通过对 kill() 和 signal() 这个两个系统调用的学习，进一步理解了进程是怎样处理 Linux 信号的，重点是信号在接收处理的三个选择：**忽略，捕获和缺省行为**。
 
 ​	通过代码例子，我们知道 SIGTERM 是可以被忽略和捕获的，但是 SIGKILL 是不可以被忽略和捕获的。了解这一点以后，我们就找到了问题的解决方向，也就是我们需要在停止容器时，让容器中的应用收到 SIGTERM，而不是 SIGKILL。
 
